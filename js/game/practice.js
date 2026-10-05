@@ -14,9 +14,18 @@ const SHOT_HANG_TICKS = 13;
 const TRAP_DX = 16;
 const TRAP_MAX_Z = 24;
 const TRAP_PULL = 0.5;
-const VOLLEY_MAX_Z = 30;
+const BRACE_MAX_Z = 43;
+const VOLLEY_MAX_Z = 32;
+// Two recorded ground volleys: met at ~27 px a chip, at ~31 px a much higher lob. Threshold guessed.
+const VOLLEY_HIGH_Z = 29;
 const CHIP_VX = 3;
 const CHIP_VZ = 7;
+const HIGH_VOLLEY_VX = 4.734375;
+const HIGH_VOLLEY_VZ = 10.25;
+const FLICK_BEHIND = 12;
+const FLICK_Z = 10;
+const FLICK_VX = 2.25;
+const FLICK_VZ = 9;
 
 export function createPractice(playerX, ballX) {
   return { player: createPlayer(playerX), ball: createBall(ballX), noCapture: 0, ballSteps: 1 };
@@ -58,8 +67,18 @@ function groundVolley(s, input) {
   const ready = input.a && !p.hasBall && !p.action && p.mode === 'walk' && p.z === 0;
   if (!ready || b.vz >= 0 || b.z <= 0 || b.z > VOLLEY_MAX_Z || Math.abs(b.x - p.x) > HIT_DX) return;
   p.trapping = false;
-  startAction(p, 'groundVolley');
-  chip(s);
+  p.bracing = false;
+  if (b.z > VOLLEY_HIGH_Z) {
+    startAction(p, 'groundVolleyHigh');
+    release(s);
+    b.vx = HIGH_VOLLEY_VX * sign(p);
+    b.vz = HIGH_VOLLEY_VZ;
+    b.hang = 0;
+    s.ballSteps = 0;
+  } else {
+    startAction(p, 'groundVolley');
+    chip(s);
+  }
 }
 
 function applyEvent(s, event) {
@@ -74,6 +93,12 @@ function applyEvent(s, event) {
     b.vz = CHIP_VZ;
     // The original leaves the ball in place on the kick tick and moves it twice on the next.
     s.ballSteps = 0;
+  } else if (event === 'flickUp' && p.hasBall) {
+    release(s);
+    Object.assign(b, { x: Math.floor(p.x) - FLICK_BEHIND * sign(p), z: FLICK_Z, vx: 0, vz: 0, hang: 1 });
+  } else if (event === 'flick' && !p.hasBall) {
+    b.vx = FLICK_VX * sign(p);
+    b.vz = FLICK_VZ;
   } else if (event === 'float' && p.hasBall) {
     release(s);
     b.vx = p.vx / 8;
@@ -100,6 +125,7 @@ export function tickPractice(s, input) {
     rollBall(b, p.vx);
     Object.assign(b, { x, z: p.z, vx: p.vx, vz: 0, hang: 0 });
     p.trapping = false;
+    p.bracing = false;
     return;
   }
 
@@ -114,8 +140,11 @@ export function tickPractice(s, input) {
   }
 
   const dx = b.x - p.x;
+  const onFoot = p.mode === 'walk' && p.z === 0 && !p.action;
+  // Holding A near a dropping ball: brake and get ready to volley it.
+  p.bracing = onFoot && input.a && !input.b && b.vz < 0 && b.z > 0 && b.z < BRACE_MAX_Z && Math.abs(dx) <= HIT_DX;
   const wasTrapping = p.trapping;
-  p.trapping = p.mode === 'walk' && p.z === 0 && b.z > 0 && b.z <= TRAP_MAX_Z && Math.abs(dx) <= TRAP_DX
+  p.trapping = onFoot && !input.a && b.z > 0 && b.z <= TRAP_MAX_Z && Math.abs(dx) <= TRAP_DX
     && (wasTrapping || b.vz < 0);
   if (p.trapping && !wasTrapping) {
     // Cushioned: the ball stops in the air for a moment, then drops towards the feet.

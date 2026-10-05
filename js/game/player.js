@@ -18,6 +18,7 @@ const AIR_CONTROL = 3 / 64;
 const LAND_TICKS = 5;
 const LAND_DECEL = 1;
 const AB_WINDOW_TICKS = 2;
+const BRACE_DECEL = 1;
 
 export const POSE = {
   stand: 0, walk1: 1, walk2: 2, run1: 3, sprint1: 4, sprint2: 5, skid: 6, air: 7, jumpKick: 8, land: 9,
@@ -39,6 +40,9 @@ const ACTIONS = {
   jumpKick: { steps: [[POSE.air, 3], [POSE.jumpKick, 8]], events: { 3: 'jumpKick' } },
   volley: { steps: [[POSE.air, 1], [POSE.windUp, 7], [POSE.volley, 4]], events: { 8: 'chip' } },
   groundVolley: { steps: [[POSE.volley, 6]], events: {} },
+  groundVolleyHigh: { steps: [[POSE.windUp, 2], [POSE.volley, 6]], events: {} },
+  // A+B with a direction while running with the ball: skid, then flick it up over the head.
+  flick: { steps: [[POSE.skid, 1], [POSE.jumpKick, 2], [POSE.volley, 4]], decel: 1, events: { 3: 'flickUp', 4: 'flick' } },
   overheadOwnBall: {
     steps: [[POSE.air, 4], [POSE.overhead1, 3], [POSE.overhead2, 1], [POSE.overheadOwnBall, 7]],
     events: { 0: 'float', 8: 'hit' },
@@ -76,7 +80,7 @@ export function createPlayer(x) {
     landTicks: 0,
     airActionUsed: false,
     settleTicks: 0,
-    readyToKick: false,
+    bracing: false,
     action: null,
     hasBall: false,
     trapping: false,
@@ -113,6 +117,14 @@ function actionPose(a) {
     t -= ticks;
   }
   return a.steps[a.steps.length - 1][0];
+}
+
+function groundAction(p, events) {
+  if (p.action.decel) {
+    p.vx = approachZero(p.vx, p.action.decel);
+    p.x = clampX(p.x + p.vx);
+  }
+  runAction(p, events);
 }
 
 function jump(p) {
@@ -246,7 +258,7 @@ export function tickPlayer(p, input) {
   }
 
   if (p.action) {
-    runAction(p, events);
+    groundAction(p, events);
     return events;
   }
 
@@ -255,7 +267,13 @@ export function tickPlayer(p, input) {
   const abPressed = ground && input.a && input.b && p.tick - p.abTick <= AB_WINDOW_TICKS;
   if (abPressed && p.hasBall && p.vx === 0) {
     startAction(p, 'lift');
-    runAction(p, events);
+    groundAction(p, events);
+    return events;
+  }
+  if (abPressed && p.hasBall && p.mode === 'run' && dir === p.runDir) {
+    p.mode = 'walk';
+    startAction(p, 'flick');
+    groundAction(p, events);
     return events;
   }
   if (abPressed) {
@@ -264,9 +282,13 @@ export function tickPlayer(p, input) {
     return events;
   }
 
-  p.readyToKick = p.mode === 'walk' && input.a && !input.b && !p.hasBall;
-  if ((p.trapping || p.readyToKick) && p.mode === 'walk') {
+  if (p.trapping && p.mode === 'walk') {
     p.vx = 0;
+    return events;
+  }
+  if (p.bracing && p.mode === 'walk') {
+    p.vx = approachZero(p.vx, BRACE_DECEL);
+    p.x = clampX(p.x + p.vx);
     return events;
   }
   if (p.settleTicks > 0) {
@@ -284,7 +306,7 @@ function currentAnimation(p) {
   if (p.action) return `action:${actionPose(p.action)}`;
   if (p.mode === 'air') return `action:${POSE.air}`;
   if (p.mode === 'land') return `action:${POSE.land}`;
-  if (p.trapping || p.readyToKick) return `action:${POSE.windUp}`;
+  if (p.trapping || p.bracing) return `action:${POSE.windUp}`;
   if (p.mode === 'skid') return p.skidPause ? p.animation : 'skid';
   if (p.skidHold > 0) return 'skid';
   if (p.mode === 'run') return Math.abs(p.vx) > RUN_SPEED ? 'sprint' : 'run';

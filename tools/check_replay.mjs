@@ -25,8 +25,12 @@ const SCENARIOS = [
     player: { mode: 'air', facing: 'right' } },
   { name: 'overhead kick at the edge of reach', from: 3590, to: 3620,
     player: { mode: 'air', facing: 'right' } },
-  { name: 'volley a dropping ball from the ground (hold A)', from: 3944, to: 3990,
+  { name: 'land, hold A, volley a dropping ball from the ground', from: 3944, to: 3990,
+    player: { mode: 'land', landTicks: 1, facing: 'right' } },
+  { name: 'walk with A held, brake, high volley', from: 4040, to: 4100,
     player: { facing: 'right' } },
+  { name: 'sprint with the ball, A+B+forward: skid and flick it over the head', from: 4871, to: 4900,
+    player: { mode: 'run', runDir: 1, boost: 2, runTicks: 10, hasBall: true, facing: 'right' } },
 ];
 
 const tickAt = (f) => ticks.findIndex((t) => t.f === f);
