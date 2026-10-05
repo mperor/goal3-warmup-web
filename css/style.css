@@ -159,8 +159,8 @@ body {
 
 .pixel-text {
   display: block;
-  width: calc(var(--px) * 8 * var(--cols));
-  height: calc(var(--px) * 8);
+  width: calc(var(--px) * var(--w));
+  height: calc(var(--px) * var(--h));
   shape-rendering: crispEdges;
 }
 
