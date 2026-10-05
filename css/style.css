@@ -1,0 +1,156 @@
+:root {
+  --bg: #155fd9;
+  --text: #ffffff;
+  --outline: #000000;
+  --accent-magenta: #a8105c;
+  --glyph-dark: #2a0018;
+
+  /* One NES pixel; the scene is 256 NES pixels wide. */
+  --px: min(4px, calc((100vw - 32px) / 256));
+
+  --font-ja: "DotGothic16", monospace;
+  --font-pixel: "Press Start 2P", monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}
+
+.scene {
+  width: calc(var(--px) * 256);
+  min-height: 100vh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--px) * 8) 0;
+}
+
+/* Title */
+
+.title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.logo {
+  font-family: var(--font-ja);
+  font-weight: 400;
+  line-height: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.logo__line--top,
+.logo__kana {
+  color: var(--text);
+  text-shadow:
+    calc(var(--px) * -1) 0 var(--outline),
+    var(--px) 0 var(--outline),
+    0 calc(var(--px) * -1) var(--outline),
+    0 var(--px) var(--outline),
+    calc(var(--px) * -1) calc(var(--px) * -1) var(--outline),
+    var(--px) calc(var(--px) * -1) var(--outline),
+    calc(var(--px) * -1) var(--px) var(--outline),
+    var(--px) var(--px) var(--outline);
+}
+
+.logo__line--top {
+  font-size: calc(var(--px) * 16);
+  margin-bottom: calc(var(--px) * 4);
+}
+
+.logo__line--main {
+  display: flex;
+  align-items: center;
+  font-size: calc(var(--px) * 22);
+}
+
+.logo__box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--px) * 24);
+  height: calc(var(--px) * 24);
+  font-size: calc(var(--px) * 20);
+  line-height: 1;
+  overflow: hidden;
+  background: var(--accent-magenta);
+  color: var(--glyph-dark);
+  border: var(--px) solid var(--text);
+  box-shadow: 0 0 0 var(--px) var(--outline);
+  text-shadow:
+    calc(var(--px) * -1) 0 var(--text),
+    var(--px) 0 var(--text),
+    0 calc(var(--px) * -1) var(--text),
+    0 var(--px) var(--text);
+}
+
+.logo__kana {
+  margin-left: calc(var(--px) * 2);
+}
+
+.subtitle {
+  font-family: var(--font-pixel);
+  font-size: calc(var(--px) * 6);
+  margin-top: calc(var(--px) * 8);
+  white-space: nowrap;
+}
+
+/* Pitch (playable area) */
+
+.pitch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin-top: calc(var(--px) * 8);
+}
+
+.pitch__canvas {
+  display: block;
+  width: calc(var(--px) * 256);
+  height: calc(var(--px) * 96);
+  image-rendering: pixelated;
+}
+
+.pitch__ground {
+  width: calc(var(--px) * 144);
+  height: var(--px);
+  margin-top: calc(var(--px) * 4);
+  background: repeating-linear-gradient(
+    90deg,
+    var(--text) 0 var(--px),
+    transparent var(--px) calc(var(--px) * 2)
+  );
+}
+
+/* Footer */
+
+.credits {
+  font-family: var(--font-pixel);
+  font-size: calc(var(--px) * 7);
+  letter-spacing: calc(var(--px) * 1.5);
+  margin-top: calc(var(--px) * 12);
+  white-space: nowrap;
+}
