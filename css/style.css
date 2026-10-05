@@ -72,21 +72,45 @@ body {
   flex-direction: column;
   align-items: center;
   width: 100%;
-  margin-top: calc(var(--px) * 8);
 }
 
 .pitch__canvas {
   display: block;
   width: calc(var(--px) * 256);
-  height: calc(var(--px) * 96);
+  height: calc(var(--px) * 86);
   image-rendering: pixelated;
+}
+
+.press-start {
+  align-self: flex-start;
+  margin-left: calc(var(--px) * 49);
+  font-family: var(--font-ja);
+  font-size: calc(var(--px) * 8);
+  line-height: 1;
+}
+
+.press-start svg {
+  animation: blink 0.4s linear infinite;
+}
+
+@keyframes blink {
+  50%,
+  100% {
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .press-start svg {
+    animation: none;
+  }
 }
 
 .pitch__ground {
   align-self: flex-start;
   width: calc(var(--px) * 143);
   height: var(--px);
-  margin-top: calc(var(--px) * 4);
+  margin-top: calc(var(--px) * 3);
   margin-left: calc(var(--px) * 48);
   background: repeating-linear-gradient(
     90deg,
