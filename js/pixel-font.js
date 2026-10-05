@@ -1,4 +1,4 @@
-const SVG_NS = 'http://www.w3.org/2000/svg';
+import { replaceWithPixels, rowsToPath } from './pixel-art.js';
 
 // Fonts traced 1:1 from the original title screen (docs/reference/img.png).
 // Glyph width = row length; `spacing` = blank columns between glyphs.
@@ -63,30 +63,9 @@ export function renderPixelText(el) {
     }
     const rows = font.glyphs[ch];
     if (!rows) continue;
-    rows.forEach((row, y) => {
-      for (const run of row.matchAll(/#+/g)) {
-        d += `M${x + run.index} ${y}h${run[0].length}v1h-${run[0].length}z`;
-      }
-    });
+    d += rowsToPath(rows, '#', x);
     x += rows[0].length + font.spacing;
   }
-  const width = x - font.spacing;
 
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('viewBox', `0 0 ${width} ${font.height}`);
-  svg.setAttribute('aria-hidden', 'true');
-  svg.setAttribute('class', 'pixel-text');
-  svg.style.setProperty('--w', width);
-  svg.style.setProperty('--h', font.height);
-
-  const path = document.createElementNS(SVG_NS, 'path');
-  path.setAttribute('d', d);
-  path.setAttribute('fill', 'currentColor');
-  svg.append(path);
-
-  const label = document.createElement('span');
-  label.className = 'visually-hidden';
-  label.textContent = text;
-
-  el.replaceChildren(label, svg);
+  replaceWithPixels(el, x - font.spacing, font.height, [{ fill: 'currentColor', d }]);
 }
