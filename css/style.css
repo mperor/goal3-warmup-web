@@ -140,9 +140,11 @@ body {
 }
 
 .pitch__ground {
-  width: calc(var(--px) * 144);
+  align-self: flex-start;
+  width: calc(var(--px) * 143);
   height: var(--px);
   margin-top: calc(var(--px) * 4);
+  margin-left: calc(var(--px) * 48);
   background: repeating-linear-gradient(
     90deg,
     var(--text) 0 var(--px),
@@ -156,7 +158,7 @@ body {
   font-family: var(--font-pixel);
   font-size: calc(var(--px) * 7);
   letter-spacing: calc(var(--px) * 1.5);
-  margin-top: calc(var(--px) * 12);
+  margin-top: calc(var(--px) * 13);
   white-space: nowrap;
 }
 
