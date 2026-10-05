@@ -1,5 +1,5 @@
-// Ball physics per logic tick, after goal3 docs/research/mechanics.md (bounce, friction, gravity)
-// and the ball-practice recording (walls, rotation).
+// Ball physics per logic tick: bounce, friction and gravity as in the original's code,
+// walls and rotation measured from the ball-practice recording.
 const GRAVITY = 0.5;
 const FRICTION_K = 24 / 256;
 const SLOW_FRICTION = 1 / 16;

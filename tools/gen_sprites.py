@@ -1,38 +1,32 @@
 """Generate js/art/sprites.js: player poses, ball frames and shadow from the original game.
 
-Inputs come from the sibling research repo ../goal3 (local files there, not in its git):
-  - a frame dump of the ball-practice screen (tools/mesen/frame-dump.lua) for the poses,
-    their offsets and the ball frames;
-  - a PPU capture of the same screen (tools/mesen/export-screen.lua) for the CHR tiles and palettes.
-Python 3.10+, stdlib only.
+Poses, their offsets and the ball frames come from the frame dump, the CHR tiles and palettes
+from the screen capture (see tools/recording.py). Python 3.10+, stdlib only.
 
-  py tools/gen_sprites.py [--goal3 ../goal3] [--dump traces/...fdump]
+  py tools/gen_sprites.py
 """
 import argparse
 from collections import Counter
 from pathlib import Path
 
-from recording import (BALL, BALL_PALETTE, DEFAULT_DUMP, DEFAULT_GOAL3, PLAYER, PLAYER_PALETTE, ROOT,
-                       SHADOW_TILE, SPRITE_LAG, Recording)
+from recording import (BALL, BALL_PALETTE, DEFAULT_DUMP, DEFAULT_SCREEN, PLAYER, PLAYER_PALETTE, ROOT,
+                       SHADOW_TILE, SPRITE_LAG, Recording, Screen)
 
 POSES = range(21)  # 21 and 22 only appear in the transition after START
-# goal3's decoder uses a generic NTSC palette; map it to the colours of docs/reference/nsl-jp.gif.
-GIF_COLOURS = {"#000000": "#000000", "#eceeec": "#fffeff", "#ec6a64": "#fe8170"}
+# NES palette entries used by the sprites, in the colours of docs/reference/nsl-jp.gif.
+GIF_COLOURS = {0x0F: "#000000", 0x30: "#fffeff", 0x26: "#fe8170"}
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--goal3", type=Path, default=DEFAULT_GOAL3)
-    ap.add_argument("--dump", default=DEFAULT_DUMP, help="relative to --goal3")
-    ap.add_argument("--screen", default="assets/ripped/pregame-screen.g3px", help="relative to --goal3")
+    ap.add_argument("--dump", type=Path, default=DEFAULT_DUMP)
+    ap.add_argument("--screen", type=Path, default=DEFAULT_SCREEN)
     ap.add_argument("--out", type=Path, default=ROOT / "js" / "art" / "sprites.js")
     args = ap.parse_args()
 
-    rec = Recording(args.goal3, args.dump)
-    from ppu_export import Screen  # goal3 tools, on sys.path via Recording
-
+    rec = Recording(args.dump)
     dump = rec.dump
-    screen = Screen((args.goal3 / args.screen).read_bytes())
+    screen = Screen(args.screen)
     sig_by_id = {pid: sig for sig, pid in rec.pose_ids.items()}
 
     offsets = {}
@@ -82,11 +76,11 @@ def main():
 
     tile_js = []
     for t in sorted(used_tiles):
-        rows = screen.tile_pixels(t, screen.sprite_pattern)
+        rows = screen.sprite_tile(t)
         tile_js.append(f"  0x{t:02x}: [" + ", ".join("'" + "".join(str(v) for v in row) + "'" for row in rows) + "],")
 
     def palette(p):
-        return "[null, " + ", ".join(f"'{GIF_COLOURS['#%02x%02x%02x' % screen.sprite_color(p, i)]}'" for i in (1, 2, 3)) + "]"
+        return "[null, " + ", ".join(f"'{GIF_COLOURS[screen.sprite_colour_index(p, i)]}'" for i in (1, 2, 3)) + "]"
 
     nl = "\n"
     js = f"""// Player, ball and shadow sprites from the original ROM (CHR + palettes captured in Mesen),
