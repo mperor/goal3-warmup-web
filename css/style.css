@@ -49,7 +49,9 @@ body {
 .title {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
+  align-self: stretch;
+  padding-left: calc(var(--px) * 33);
 }
 
 .logo {
@@ -78,10 +80,13 @@ body {
 .logo__line--top {
   font-size: calc(var(--px) * 16);
   margin-bottom: calc(var(--px) * 4);
+  /* Cancels DotGothic16 side bearing so the outline starts at the block edge. */
+  margin-left: calc(var(--px) * -2);
 }
 
 .logo__line--main {
   display: flex;
+  margin-left: var(--px);
   align-items: center;
   font-size: calc(var(--px) * 22);
 }
