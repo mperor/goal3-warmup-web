@@ -3,10 +3,11 @@ const KEYS = {
   ArrowRight: 'right',
   KeyX: 'a',
   KeyZ: 'b',
+  Space: 'ab',
 };
 
 export function createInput(target = window) {
-  const held = { left: false, right: false, a: false, b: false };
+  const held = { left: false, right: false, a: false, b: false, ab: false };
 
   function set(event, value) {
     const button = KEYS[event.code];
@@ -19,5 +20,7 @@ export function createInput(target = window) {
   target.addEventListener('keyup', (e) => set(e, false));
   target.addEventListener('blur', () => Object.keys(held).forEach((k) => (held[k] = false)));
 
-  return { snapshot: () => ({ ...held }) };
+  return {
+    snapshot: () => ({ left: held.left, right: held.right, a: held.a || held.ab, b: held.b || held.ab }),
+  };
 }
