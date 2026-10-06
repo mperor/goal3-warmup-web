@@ -3,7 +3,9 @@
 The recordings are local working files and are not committed (tools/data/ is git-ignored).
 
   ball-practice.fdump.gz  every frame of a play session: input, internal RAM, OAM
-                          (written by tools/mesen/frame-dump.lua, then gzipped)
+                          (written by tools/mesen/frame-dump.lua, then gzipped); the reference
+                          recording that pose ids and the sprite offsets come from
+  shots-passes.fdump.gz   another session: passes, shots and volleys from the ground
   ball-practice.g3px      one PPU snapshot of the screen: CHR tiles, palettes, OAM
                           (written by tools/mesen/export-screen.lua)
 
@@ -102,6 +104,7 @@ class Screen:
 
 class Recording:
     def __init__(self, dump=DEFAULT_DUMP):
+        self.name = Path(dump).name.split(".")[0]
         self.dump = FrameDump(dump)
         self.timeline, self.pose_ids = self._poses()
 
@@ -151,3 +154,29 @@ class Recording:
             # flipped sprites face right on screen; the stored (unflipped) form faces left
             timeline.append((ids.setdefault(sig, len(ids)), "right" if flipped else "left", x0, y0))
         return timeline, ids
+
+
+GAMEPLAY_POSES = 21  # the reference recording's later poses only appear in the transition after START
+
+
+def recordings():
+    """Every frame dump in tools/data/, the reference recording first, with shared pose ids."""
+    others = sorted(p for p in DATA.glob("*.fdump.gz") if p != DEFAULT_DUMP)
+    recs = [Recording(DEFAULT_DUMP)] + [Recording(p) for p in others]
+    share_pose_ids(recs)
+    return recs
+
+
+def share_pose_ids(recs):
+    """Renumber poses so an id means the same pose in every recording: the reference
+    recording's gameplay poses keep their ids, poses first seen in the other recordings follow
+    (in recording order), the START transition poses come last."""
+    ids = {sig: pid for sig, pid in recs[0].pose_ids.items() if pid < GAMEPLAY_POSES}
+    for rec in recs[1:] + recs[:1]:
+        for sig in sorted(rec.pose_ids, key=rec.pose_ids.get):
+            ids.setdefault(sig, len(ids))
+    for rec in recs:
+        new_id = {pid: ids[sig] for sig, pid in rec.pose_ids.items()}
+        rec.timeline = [(new_id[e[0]], *e[1:]) if e else None for e in rec.timeline]
+        rec.pose_ids = {sig: ids[sig] for sig in rec.pose_ids}
+    return ids

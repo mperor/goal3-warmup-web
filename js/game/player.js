@@ -9,21 +9,22 @@ const BOOST_MIN_RUN_TICKS = 3;
 const COAST_TICKS = 15;
 const RUN_DECEL = 1;
 const DOUBLE_TAP_TICKS = 8;
-const MIN_X = 27.5;
-const MAX_X = 229;
+// Soft side walls: a player past these whole pixels is pushed back 1 px per pixel over, each tick.
+const WALL_LEFT = 32;
+const WALL_RIGHT = 224;
 
 const JUMP_SPEED = 4;
 const GRAVITY = 0.5;
 const AIR_CONTROL = 3 / 64;
 const LAND_TICKS = 5;
 const LAND_DECEL = 1;
+// A or B alone on the ground waits this long for the other button (A+B) before it acts.
 const AB_WINDOW_TICKS = 2;
-const BRACE_DECEL = 1;
 
 export const POSE = {
   stand: 0, walk1: 1, walk2: 2, run1: 3, sprint1: 4, sprint2: 5, skid: 6, air: 7, jumpKick: 8, land: 9,
   windUp: 10, overhead1: 11, overhead2: 12, overheadOwnBall: 13, overhead: 14,
-  flip1: 15, flip2: 16, flip3: 17, flip4: 18, lift: 19, volley: 20,
+  flip1: 15, flip2: 16, flip3: 17, flip4: 18, lift: 19, volley: 20, pass: 21,
 };
 
 const ANIMATIONS = {
@@ -34,13 +35,20 @@ const ANIMATIONS = {
   skid: { poses: [POSE.skid], frames: 1 },
 };
 
-// Scripted actions: [pose, ticks] steps, and events emitted at a tick index (0 = the press tick).
+// Scripted actions: [pose, ticks] steps, and events emitted at a tick index (0 = the first tick).
+// A `strike` action emits 'strike:<kind>' on every tick after the first until the ball is hit.
 const ACTIONS = {
   lift: { steps: [[POSE.lift, 5]], events: { 1: 'lift' } },
   jumpKick: { steps: [[POSE.air, 3], [POSE.jumpKick, 8]], events: { 3: 'jumpKick' } },
   volley: { steps: [[POSE.air, 1], [POSE.windUp, 7], [POSE.volley, 4]], events: { 8: 'chip' } },
-  groundVolley: { steps: [[POSE.volley, 6]], events: {} },
-  groundVolleyHigh: { steps: [[POSE.windUp, 2], [POSE.volley, 6]], events: {} },
+  // On the ground, A or B alone once the A+B window has passed.
+  pass: { steps: [[POSE.pass, 5], [POSE.jumpKick, 5]], decel: 1, events: { 4: 'pass' } },
+  shot: { steps: [[POSE.overhead1, 5], [POSE.overhead2, 2], [POSE.overheadOwnBall, 5]], decel: 1, events: { 6: 'shot' } },
+  groundVolley: { steps: [[POSE.windUp, 4], [POSE.volley, 6]], decel: 1, events: {}, strike: 'volley' },
+  volleyShot: { steps: [[POSE.windUp, 4], [POSE.volley, 6]], decel: 1, events: {}, strike: 'volleyShot' },
+  groundOverhead: {
+    steps: [[POSE.overhead1, 4], [POSE.overhead2, 1], [POSE.overhead, 7]], decel: 1, events: {}, strike: 'overheadShot',
+  },
   // A+B with a direction while running with the ball: skid, then flick it up over the head.
   flick: { steps: [[POSE.skid, 1], [POSE.jumpKick, 2], [POSE.volley, 4]], decel: 1, events: { 3: 'flickUp', 4: 'flick' } },
   overheadOwnBall: {
@@ -73,6 +81,8 @@ export function createPlayer(x) {
     prevA: false,
     prevB: false,
     abTick: -Infinity,
+    pending: null,
+    pendingDir: 0,
     tapDir: 0,
     tapTick: -Infinity,
     skidPause: false,
@@ -80,7 +90,6 @@ export function createPlayer(x) {
     landTicks: 0,
     airActionUsed: false,
     settleTicks: 0,
-    bracing: false,
     action: null,
     hasBall: false,
     trapping: false,
@@ -92,7 +101,18 @@ export function createPlayer(x) {
 }
 
 const facingSign = (p) => (p.facing === 'left' ? -1 : 1);
-const clampX = (x) => Math.min(MAX_X, Math.max(MIN_X, x));
+
+function wallPush(x) {
+  const px = Math.floor(x);
+  return px < WALL_LEFT ? WALL_LEFT - px : px > WALL_RIGHT ? WALL_RIGHT - px : 0;
+}
+
+// Returns the wall push applied.
+function moveX(p) {
+  const push = wallPush(p.x);
+  p.x += p.vx + push;
+  return push;
+}
 
 function approachZero(v, step) {
   return v > 0 ? Math.max(0, v - step) : Math.min(0, v + step);
@@ -106,6 +126,7 @@ function runAction(p, events) {
   const a = p.action;
   if (!a) return;
   if (a.events[a.t]) events.push(a.events[a.t]);
+  if (a.strike && a.t > 0 && !a.struck) events.push(`strike:${a.strike}`);
   a.t += 1;
   if (a.t >= a.steps.reduce((n, [, ticks]) => n + ticks, 0)) p.action = null;
 }
@@ -119,10 +140,10 @@ function actionPose(a) {
   return a.steps[a.steps.length - 1][0];
 }
 
-function groundAction(p, events) {
+export function groundAction(p, events) {
   if (p.action.decel) {
     p.vx = approachZero(p.vx, p.action.decel);
-    p.x = clampX(p.x + p.vx);
+    moveX(p);
   }
   runAction(p, events);
 }
@@ -154,7 +175,7 @@ function airTick(p, dir, aEdge, bEdge, events) {
   if (dir !== 0 && p.action?.name !== 'bicycle') p.vx += dir * AIR_CONTROL;
   runAction(p, events);
 
-  p.x = clampX(p.x + p.vx);
+  moveX(p);
   p.z += p.vz;
   p.vz -= GRAVITY;
   if (p.z <= 0) {
@@ -223,11 +244,8 @@ function groundTick(p, dir, pressed) {
     }
   }
 
-  p.x = clampX(p.x + p.vx);
-  if ((p.x === MIN_X || p.x === MAX_X) && p.mode === 'run') {
-    p.mode = 'walk';
-    p.vx = 0;
-  }
+  // A run into a wall ends once the boost is over.
+  if (moveX(p) !== 0 && p.mode === 'run' && p.boost === 0) p.mode = 'walk';
 }
 
 // Advances one logic tick; returns the ball events of this tick ('lift', 'hit', ...).
@@ -236,7 +254,13 @@ export function tickPlayer(p, input) {
   const pressed = dir !== 0 && dir !== p.prevDir;
   const aEdge = input.a && !p.prevA;
   const bEdge = input.b && !p.prevB;
-  if ((aEdge || bEdge) && !p.prevA && !p.prevB) p.abTick = p.tick;
+  if ((aEdge || bEdge) && !p.prevA && !p.prevB) {
+    p.abTick = p.tick;
+    if (p.mode !== 'air' && !p.action) {
+      p.pending = aEdge ? 'a' : 'b';
+      p.pendingDir = dir;
+    }
+  }
   p.prevDir = dir;
   p.prevA = input.a;
   p.prevB = input.b;
@@ -245,16 +269,17 @@ export function tickPlayer(p, input) {
   const events = [];
 
   if (p.mode === 'air') {
+    p.pending = null;
     airTick(p, dir, aEdge, bEdge, events);
     return events;
   }
 
   if (p.mode === 'land') {
     p.vx = approachZero(p.vx, LAND_DECEL);
-    p.x = clampX(p.x + p.vx);
+    moveX(p);
     p.landTicks -= 1;
     if (p.landTicks === 0) p.mode = 'walk';
-    return events;
+    return kickReady(p) ? [...events, kick(p)] : events;
   }
 
   if (p.action) {
@@ -265,6 +290,7 @@ export function tickPlayer(p, input) {
   // A+B together (pressed within a couple of ticks of each other, as on a pad).
   const ground = p.mode === 'walk' || p.mode === 'run';
   const abPressed = ground && input.a && input.b && p.tick - p.abTick <= AB_WINDOW_TICKS;
+  if (abPressed) p.pending = null;
   if (abPressed && p.hasBall && p.vx === 0) {
     startAction(p, 'lift');
     groundAction(p, events);
@@ -286,11 +312,6 @@ export function tickPlayer(p, input) {
     p.vx = 0;
     return events;
   }
-  if (p.bracing && p.mode === 'walk') {
-    p.vx = approachZero(p.vx, BRACE_DECEL);
-    p.x = clampX(p.x + p.vx);
-    return events;
-  }
   if (p.settleTicks > 0) {
     // After trapping the ball the player stays put a moment; turning is already allowed.
     p.settleTicks -= 1;
@@ -298,15 +319,33 @@ export function tickPlayer(p, input) {
     return events;
   }
 
+  // Without the ball, A or B ends a run (a skid still goes first); with it the run goes on.
+  if (p.pending && !p.hasBall && p.mode === 'run' && dir !== -p.runDir) p.mode = 'walk';
+  if (kickReady(p)) return [...events, kick(p)];
   groundTick(p, dir, pressed);
+  // A skid that just ended lets a waiting kick go on the same tick.
+  if (kickReady(p)) return [...events, kick(p)];
   return events;
+}
+
+// Kicking out of a run with the ball is not in the recordings; it goes like the others.
+const kickReady = (p) => p.pending && (p.mode === 'walk' || p.mode === 'run') && p.tick - p.abTick > AB_WINDOW_TICKS;
+
+// The A+B window has passed with one button: the caller picks the action ('kickA' / 'kickB').
+// The kick faces the direction held with the button, even if a skid came in between.
+function kick(p) {
+  const event = p.pending === 'a' ? 'kickA' : 'kickB';
+  if (p.pendingDir !== 0) p.facing = p.pendingDir < 0 ? 'left' : 'right';
+  p.mode = 'walk';
+  p.pending = null;
+  return event;
 }
 
 function currentAnimation(p) {
   if (p.action) return `action:${actionPose(p.action)}`;
   if (p.mode === 'air') return `action:${POSE.air}`;
   if (p.mode === 'land') return `action:${POSE.land}`;
-  if (p.trapping || p.bracing) return `action:${POSE.windUp}`;
+  if (p.trapping) return `action:${POSE.windUp}`;
   if (p.mode === 'skid') return p.skidPause ? p.animation : 'skid';
   if (p.skidHold > 0) return 'skid';
   if (p.mode === 'run') return Math.abs(p.vx) > RUN_SPEED ? 'sprint' : 'run';

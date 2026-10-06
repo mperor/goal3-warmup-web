@@ -1,7 +1,8 @@
 """Generate js/art/sprites.js: player poses, ball frames and shadow from the original game.
 
-Poses, their offsets and the ball frames come from the frame dump, the CHR tiles and palettes
-from the screen capture (see tools/recording.py). Python 3.10+, stdlib only.
+Poses and their offsets come from the frame dumps in tools/data/, the ball frames from the
+reference recording, the CHR tiles and palettes from the screen capture (see tools/recording.py).
+Python 3.10+, stdlib only.
 
   py tools/gen_sprites.py
 """
@@ -9,40 +10,44 @@ import argparse
 from collections import Counter
 from pathlib import Path
 
-from recording import (BALL, BALL_PALETTE, DEFAULT_DUMP, DEFAULT_SCREEN, PLAYER, PLAYER_PALETTE, ROOT,
-                       SHADOW_TILE, SPRITE_LAG, Recording, Screen)
+from recording import (BALL, BALL_PALETTE, DEFAULT_SCREEN, GAMEPLAY_POSES, PLAYER, PLAYER_PALETTE, ROOT,
+                       SHADOW_TILE, SPRITE_LAG, Screen, recordings)
 
-POSES = range(21)  # 21 and 22 only appear in the transition after START
 # NES palette entries used by the sprites, in the colours of docs/reference/nsl-jp.gif.
 GIF_COLOURS = {0x0F: "#000000", 0x30: "#fffeff", 0x26: "#fe8170"}
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--dump", type=Path, default=DEFAULT_DUMP)
     ap.add_argument("--screen", type=Path, default=DEFAULT_SCREEN)
     ap.add_argument("--out", type=Path, default=ROOT / "js" / "art" / "sprites.js")
     args = ap.parse_args()
 
-    rec = Recording(args.dump)
-    dump = rec.dump
+    recs = recordings()
+    rec, dump = recs[0], recs[0].dump
     screen = Screen(args.screen)
-    sig_by_id = {pid: sig for sig, pid in rec.pose_ids.items()}
+    sig_by_id = {pid: sig for r in recs for sig, pid in r.pose_ids.items()}
+    # The reference recording's poses past the gameplay ones only appear in the transition after START.
+    transition = {pid for pid in rec.pose_ids.values() if pid >= GAMEPLAY_POSES}
+    poses = sorted(set(sig_by_id) - transition)
+    if poses != list(range(len(poses))):
+        raise SystemExit(f"pose ids are not contiguous: {poses}")
 
     offsets = {}
-    for f in range(SPRITE_LAG, len(dump)):
-        entry = rec.timeline[f]
-        if entry and entry[0] in POSES:
-            pid, facing, sx, sy = entry
-            key = (sx - int(rec.x(f - SPRITE_LAG, PLAYER)), sy + int(rec.z(f - SPRITE_LAG, PLAYER)))
-            offsets.setdefault((pid, facing), Counter())[key] += 1
+    for r in recs:
+        for f in range(SPRITE_LAG, len(r.dump)):
+            entry = r.timeline[f]
+            if entry and entry[0] in poses:
+                pid, facing, sx, sy = entry
+                key = (sx - int(r.x(f - SPRITE_LAG, PLAYER)), sy + int(r.z(f - SPRITE_LAG, PLAYER)))
+                offsets.setdefault((pid, facing), Counter())[key] += 1
 
     def width(pid):
         return max(p[0] for p in sig_by_id[pid]) + 8
 
     # Poses seen in both facings all satisfy dxLeft + dxRight + width = c; use it for the others.
     known = Counter()
-    for pid in POSES:
+    for pid in poses:
         if (pid, "left") in offsets and (pid, "right") in offsets:
             known[offsets[(pid, "left")].most_common(1)[0][0][0] + offsets[(pid, "right")].most_common(1)[0][0][0] + width(pid)] += 1
     if len(known) != 1:
@@ -51,7 +56,7 @@ def main():
 
     used_tiles = {SHADOW_TILE}
     pose_js = []
-    for pid in POSES:
+    for pid in poses:
         sig = sig_by_id[pid]
         w, h = width(pid), max(p[1] for p in sig) + 8
         used_tiles.update(p[2] for p in sig)

@@ -1,5 +1,5 @@
 import { createBall, rollBall, tickBall } from './ball.js';
-import { createPlayer, isRunning, startAction, tickPlayer } from './player.js';
+import { createPlayer, groundAction, isRunning, startAction, tickPlayer } from './player.js';
 
 // Player-ball interaction on the ball-practice screen, measured from the recording.
 const DRIBBLE_OFFSET = 12;
@@ -14,12 +14,22 @@ const SHOT_HANG_TICKS = 13;
 const TRAP_DX = 16;
 const TRAP_MAX_Z = 24;
 const TRAP_PULL = 0.5;
-const BRACE_MAX_Z = 43;
-const VOLLEY_MAX_Z = 32;
-// Two recorded ground volleys: met at ~27 px a chip, at ~31 px a much higher lob. Threshold guessed.
+// Ground volleys: met at ~27 px or lower a chip, at ~31 px a much higher lob. Threshold guessed.
 const VOLLEY_HIGH_Z = 29;
 const CHIP_VX = 3;
 const CHIP_VZ = 7;
+const PASS_VZ = 8;
+// B without the ball: a ball still this high when the kick starts is volleyed, a lower one is
+// met with an overhead kick (recorded: ~31 px and up volleyed, 29 px and below overhead).
+const VOLLEY_SHOT_MIN_Z = 30;
+// Reach of the kicks from the ground, from the recorded hits and misses.
+const STRIKES = {
+  volley: { dx: 13, minZ: 0, maxZ: 32 },
+  volleyShot: { dx: 16, minZ: 12, maxZ: 32 },
+  overheadShot: { dx: 16, minZ: 0, maxZ: 12 },
+};
+// A shot from the ground lifts a low ball to this height.
+const GROUND_SHOT_Z = 8;
 const HIGH_VOLLEY_VX = 4.734375;
 const HIGH_VOLLEY_VZ = 10.25;
 const FLICK_BEHIND = 12;
@@ -61,22 +71,40 @@ function chip(s) {
   b.hang = 0;
 }
 
-// On the ground, holding A volleys a dropping ball as soon as it comes into reach.
-function groundVolley(s, input) {
+function groundShot(s) {
+  shoot(s, sign(s.player));
+  if (s.ball.z < GROUND_SHOT_Z) s.ball.z = GROUND_SHOT_Z;
+}
+
+// A or B alone on the ground: pass or shoot with the ball, otherwise get ready to kick it.
+function startKick(s, button) {
   const { player: p, ball: b } = s;
-  const ready = input.a && !p.hasBall && !p.action && p.mode === 'walk' && p.z === 0;
-  if (!ready || b.vz >= 0 || b.z <= 0 || b.z > VOLLEY_MAX_Z || Math.abs(b.x - p.x) > HIT_DX) return;
+  let name;
+  if (p.hasBall) name = button === 'a' ? 'pass' : 'shot';
+  else if (button === 'a') name = 'groundVolley';
+  else name = Math.max(0, b.z + b.vz) >= VOLLEY_SHOT_MIN_Z ? 'volleyShot' : 'groundOverhead';
+  startAction(p, name);
   p.trapping = false;
-  p.bracing = false;
-  if (b.z > VOLLEY_HIGH_Z) {
-    startAction(p, 'groundVolleyHigh');
+  groundAction(p, []);
+}
+
+// A kick from the ground meets the ball once it comes into the action's reach.
+// The action may end on this very tick, so the kind comes with the event.
+function strike(s, kind) {
+  const { player: p, ball: b } = s;
+  const reach = STRIKES[kind];
+  const dz = b.z - p.z;
+  if (Math.abs(b.x - p.x) > reach.dx || dz < reach.minZ || dz > reach.maxZ) return;
+  if (p.action) p.action.struck = true;
+  if (kind !== 'volley') {
+    groundShot(s);
+  } else if (dz > VOLLEY_HIGH_Z) {
     release(s);
     b.vx = HIGH_VOLLEY_VX * sign(p);
     b.vz = HIGH_VOLLEY_VZ;
     b.hang = 0;
     s.ballSteps = 0;
   } else {
-    startAction(p, 'groundVolley');
     chip(s);
   }
 }
@@ -103,6 +131,15 @@ function applyEvent(s, event) {
     release(s);
     b.vx = p.vx / 8;
     b.vz = 3.5;
+  } else if (event === 'pass' && p.hasBall) {
+    release(s);
+    b.vx = CHIP_VX * sign(p);
+    b.vz = PASS_VZ;
+    b.hang = 0;
+  } else if (event === 'shot' && p.hasBall) {
+    groundShot(s);
+  } else if (event.startsWith('strike:') && !p.hasBall) {
+    strike(s, event.slice(7));
   } else if (event === 'chip' && !p.hasBall && inReach(p, b)) {
     chip(s);
   } else if (event === 'hit' && !p.hasBall && inReach(p, b)) {
@@ -116,8 +153,9 @@ export function tickPractice(s, input) {
   const { player: p, ball: b } = s;
   const events = tickPlayer(p, input);
   if (s.noCapture > 0) s.noCapture -= 1;
+  const kick = events.find((e) => e === 'kickA' || e === 'kickB');
+  if (kick) startKick(s, kick === 'kickA' ? 'a' : 'b');
   events.forEach((e) => applyEvent(s, e));
-  groundVolley(s, input);
 
   if (p.hasBall) {
     const offset = DRIBBLE_OFFSET + (isRunning(p) ? (p.tick >> 1) & 3 : 0);
@@ -125,14 +163,15 @@ export function tickPractice(s, input) {
     rollBall(b, p.vx);
     Object.assign(b, { x, z: p.z, vx: p.vx, vz: 0, hang: 0 });
     p.trapping = false;
-    p.bracing = false;
     return;
   }
 
   for (let i = 0; i < s.ballSteps; i++) tickBall(b);
   s.ballSteps = s.ballSteps === 0 ? 2 : 1;
 
-  if (s.noCapture === 0 && Math.abs(b.x - p.x) <= CAPTURE_DX && Math.abs(b.z - p.z) <= CAPTURE_DZ) {
+  // A kick from the ground goes through with it rather than stopping the ball.
+  const kicking = p.action?.strike && !p.action.struck;
+  if (s.noCapture === 0 && !kicking && Math.abs(b.x - p.x) <= CAPTURE_DX && Math.abs(b.z - p.z) <= CAPTURE_DZ) {
     p.hasBall = true;
     if (p.trapping) p.settleTicks = 2;
     p.trapping = false;
@@ -140,9 +179,7 @@ export function tickPractice(s, input) {
   }
 
   const dx = b.x - p.x;
-  const onFoot = p.mode === 'walk' && p.z === 0 && !p.action;
-  // Holding A near a dropping ball: brake and get ready to volley it.
-  p.bracing = onFoot && input.a && !input.b && b.vz < 0 && b.z > 0 && b.z < BRACE_MAX_Z && Math.abs(dx) <= HIT_DX;
+  const onFoot = p.mode === 'walk' && p.z === 0 && !p.action && !p.pending;
   const wasTrapping = p.trapping;
   p.trapping = onFoot && !input.a && b.z > 0 && b.z <= TRAP_MAX_Z && Math.abs(dx) <= TRAP_DX
     && (wasTrapping || b.vz < 0);
