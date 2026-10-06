@@ -74,11 +74,21 @@ body {
   width: 100%;
 }
 
-.pitch__canvas {
-  display: block;
+.pitch__area {
+  position: relative;
   width: calc(var(--px) * 256);
   height: calc(var(--px) * 86);
+}
+
+/* Covers screen rows 0-172 so a high ball can fly over the title, as sprites do on the NES. */
+.pitch__canvas {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: calc(var(--px) * 256);
+  height: calc(var(--px) * 173);
   image-rendering: pixelated;
+  pointer-events: none;
 }
 
 .press-start {

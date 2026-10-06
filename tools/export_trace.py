@@ -18,7 +18,8 @@ END_FRAME = {"ball-practice": 5530}
 
 
 def inputs(p1):
-    return {"left": bool(p1 & 0x40), "right": bool(p1 & 0x80), "a": bool(p1 & 0x01), "b": bool(p1 & 0x02)}
+    return {"left": bool(p1 & 0x40), "right": bool(p1 & 0x80), "up": bool(p1 & 0x10), "down": bool(p1 & 0x20),
+            "a": bool(p1 & 0x01), "b": bool(p1 & 0x02)}
 
 
 def export(rec, out):

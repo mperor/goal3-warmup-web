@@ -1,13 +1,15 @@
 const KEYS = {
   ArrowLeft: 'left',
   ArrowRight: 'right',
+  ArrowUp: 'up',
+  ArrowDown: 'down',
   KeyX: 'a',
   KeyZ: 'b',
   Space: 'ab',
 };
 
 export function createInput(target = window) {
-  const held = { left: false, right: false, a: false, b: false, ab: false };
+  const held = { left: false, right: false, up: false, down: false, a: false, b: false, ab: false };
   // Like the NES pad, read every frame: a tap shorter than a logic tick still reaches the next one.
   const tapped = { a: false, b: false, ab: false };
 
@@ -32,7 +34,7 @@ export function createInput(target = window) {
   return {
     snapshot: () => {
       const ab = take('ab');
-      return { left: held.left, right: held.right, a: take('a') || ab, b: take('b') || ab };
+      return { left: held.left, right: held.right, up: held.up, down: held.down, a: take('a') || ab, b: take('b') || ab };
     },
   };
 }

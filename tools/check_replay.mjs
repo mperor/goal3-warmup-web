@@ -1,7 +1,7 @@
 // Replays the original's recorded input through the game logic and compares it with RAM.
 // Needs tools/.cache/<recording>.json from tools/export_trace.py. Run: node tools/check_replay.mjs
 import { existsSync, readFileSync } from 'node:fs';
-import { createPlayer, framePlayer, tickPlayer } from '../js/game/player.js';
+import { createPlayer, drawnFacing, framePlayer, tickPlayer } from '../js/game/player.js';
 import { createPractice, tickPractice } from '../js/game/practice.js';
 
 const TOLERANCE = 1.01;
@@ -63,14 +63,92 @@ const RECORDINGS = {
         player: { facing: 'right', vx: 2.3125 } },
     ],
   },
+  'no-ball': {
+    scenarios: [
+      { name: 'Up held, then double-tapped: run and sprint on the spot', from: 16, to: 90, poses: true,
+        player: { facing: 'left' } },
+      { name: 'Down double-tapped: run and sprint to the right', from: 127, to: 200, poses: true,
+        player: { facing: 'right', vx: 0.8125 } },
+      { name: 'jump, B: overhead kick in the air', from: 418, to: 530, poses: true,
+        player: { facing: 'right' } },
+      { name: 'jump, B + back: bicycle kick', from: 533, to: 645, poses: true,
+        player: { facing: 'right' } },
+      { name: 'jump, B + forward: volley in the air', from: 676, to: 780, poses: true,
+        player: { mode: 'air', facing: 'right', prevA: true, prevB: true } },
+      { name: 'A far from the ball: kick in the air', from: 898, to: 960, poses: true,
+        player: { facing: 'right' } },
+      { name: 'B far from the ball: overhead kick', from: 967, to: 1035, poses: true,
+        player: { facing: 'right' } },
+      { name: 'walk left, B + left: dive, slide, get up, B: dive again', from: 1039, to: 1170, poses: true,
+        player: { facing: 'right' } },
+      { name: 'walk right, B + right: dive, slide, get up', from: 1222, to: 1309, poses: true,
+        player: { facing: 'right' } },
+    ],
+  },
+  'shot-close': {
+    scenarios: [
+      { name: 'shot with the ball, it comes back off the wall and stops short', from: 55, to: 268, poses: true,
+        player: { facing: 'right', hasBall: true } },
+      { name: 'B at a ball lying out of reach: overhead kick still hits it; back again', from: 273, to: 463, poses: true,
+        player: { facing: 'right' } },
+      { name: 'B at a ball lying out of reach again, back off the wall', from: 463, to: 570, poses: true,
+        player: { facing: 'right' } },
+      { name: 'shot with the ball that came back to the feet', from: 676, to: 890, poses: true,
+        player: { facing: 'right', hasBall: true } },
+    ],
+  },
+  'run-shot': {
+    scenarios: [
+      { name: 'walk, run, sprint with the ball, A+B: jump with it, B: shot in the air', from: 82, to: 228, poses: true,
+        player: { facing: 'right', hasBall: true } },
+      { name: 'sprint with the ball, A then A+B: jump, B: shot in the air', from: 425, to: 535, poses: true,
+        player: { mode: 'run', runDir: 1, vx: 3.5, runTicks: 2, hasBall: true, facing: 'right',
+          animation: 'run', animFacing: 'right', animFrame: 3 } },
+      { name: 'run and sprint back towards the returning ball, skid', from: 549, to: 585, poses: true,
+        player: { mode: 'run', runDir: 1, vx: 3.5, runTicks: 1, facing: 'right',
+          animation: 'run', animFacing: 'right', animFrame: 3 } },
+      { name: 'walk, run, A+B: jump with the ball, B: shot in the air', from: 735, to: 860, poses: true,
+        player: { facing: 'right', hasBall: true } },
+    ],
+  },
+  'on-ball': {
+    scenarios: [
+      { name: 'walk, jump onto the ball, stand up on it, ride: run and sprint', from: 374, to: 503, poses: true,
+        player: { facing: 'left' } },
+      { name: 'skid on the ball, A+B + forward: flick it up and drop off', from: 503, to: 572, poses: true,
+        player: { onBall: true, mode: 'run', runDir: -1, vx: -3.25, runTicks: 20, z: 13, facing: 'left',
+          animation: 'ride', animFacing: 'left', animFrame: 6 }, practice: { rideFrac: 0.766 } },
+      { name: 'jump onto the ball again, ride, sprint, coast', from: 1202, to: 1340, poses: true,
+        player: { facing: 'right' } },
+      { name: 'on the ball: walk taps, then a run', from: 1487, to: 1545, poses: true,
+        player: { onBall: true, z: 13, facing: 'right', vx: 2.3125, prevDir: 1, tapDir: 1 }, practice: { rideFrac: 0.824 } },
+      { name: 'riding, A+B: jump off and the ball rolls on', from: 1661, to: 1700, poses: true,
+        player: { onBall: true, mode: 'run', runDir: 1, vx: 3.25, runTicks: 20, z: 13, facing: 'right',
+          animation: 'ride', animFacing: 'right', animFrame: 0 }, practice: { rideFrac: 0.824 } },
+      { name: 'run, jump over a ball: take it on the way up, B: overhead turning round', from: 1804, to: 1880, poses: true,
+        player: { mode: 'run', runDir: -1, vx: -3.5, runTicks: 2, facing: 'left', prevDir: -1,
+          animation: 'run', animFacing: 'left', animFrame: 3 } },
+    ],
+  },
+  'jump-ball': {
+    scenarios: [
+      { name: 'jump with the ball, B: toss it ahead, overhead shot', from: 266, to: 345, poses: true,
+        player: { mode: 'air', hasBall: true, facing: 'right' } },
+      { name: 'jump with the ball, B + forward: toss it high, volley shot', from: 611, to: 695, poses: true,
+        player: { mode: 'air', hasBall: true, facing: 'right' } },
+      { name: 'jump with the ball, B + back: toss it back, bicycle shot', from: 962, to: 1040, poses: true,
+        player: { mode: 'air', hasBall: true, facing: 'right' } },
+    ],
+  },
 };
 
 function runScenario({ ticks, frames }, sc) {
-  const i0 = ticks.findIndex((t) => t.f === sc.from);
+  const i0 = ticks.filter((t) => t.f <= sc.from).length - 1;
   const t0 = ticks[i0];
   const s = createPractice(t0.px, t0.bx);
   Object.assign(s.player, { tick: t0.it, z: t0.pz, vx: t0.pvx, vz: t0.pvz }, sc.player);
   Object.assign(s.ball, { z: t0.bz < 1 ? 0 : t0.bz, vx: t0.bvx, vz: t0.bvz, hang: t0.hang });
+  Object.assign(s, sc.practice);
   framePlayer(s.player);
   const off = [];
   let poses = 0;
@@ -91,8 +169,9 @@ function runScenario({ ticks, frames }, sc) {
       const want = frames[f + SPRITE_LAG];
       if (!want || want.pose === null) continue;
       poseFrames += 1;
-      if (pose === want.pose && p.facing === want.facing) poses += 1;
-      else if (sc.poses && f === t.f) problems.push(`pose ${pose}${p.facing[0]} want ${want.pose}${want.facing[0]}`);
+      const facing = drawnFacing(p, pose);
+      if (pose === want.pose && facing === want.facing) poses += 1;
+      else if (sc.poses && f === t.f) problems.push(`pose ${pose}${facing[0]} want ${want.pose}${want.facing[0]}`);
     }
     if (problems.length) off.push(`${t.f}: ${problems.join('; ')}`);
   }

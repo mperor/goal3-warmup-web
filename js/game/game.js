@@ -1,7 +1,7 @@
 import { START } from '../art/sprites.js';
 import { createInput } from './input.js';
 import { startLoop } from './loop.js';
-import { framePlayer } from './player.js';
+import { drawnFacing, framePlayer } from './player.js';
 import { createPractice, tickPractice } from './practice.js';
 import { createRenderer } from './render.js';
 
@@ -19,7 +19,8 @@ export function startGame(canvas) {
 
     const { player, ball } = practice;
     render.clear();
-    render.player(player.x, player.z, framePlayer(player), player.facing);
+    const pose = framePlayer(player);
+    render.player(player.x, player.z, pose, drawnFacing(player, pose));
     render.ball(ball.x, ball.z, ball.frame);
   });
 

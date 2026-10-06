@@ -6,6 +6,12 @@ The recordings are local working files and are not committed (tools/data/ is git
                           (written by tools/mesen/frame-dump.lua, then gzipped); the reference
                           recording that pose ids and the sprite offsets come from
   shots-passes.fdump.gz   another session: passes, shots and volleys from the ground
+  shot-close.fdump.gz     shots with the ball close by
+  run-shot.fdump.gz       shots on the run
+  on-ball.fdump.gz        moving with the ball
+  no-ball.fdump.gz        another session without touching the ball: Up/Down, kicks in the
+                          air and on the ground, dives
+  jump-ball.fdump.gz      jumps with the ball, then B in the air: alone, forward and back
   ball-practice.g3px      one PPU snapshot of the screen: CHR tiles, palettes, OAM
                           (written by tools/mesen/export-screen.lua)
 
@@ -159,10 +165,17 @@ class Recording:
 GAMEPLAY_POSES = 21  # the reference recording's later poses only appear in the transition after START
 
 
+# Recordings in the order they were made: poses first seen in a later one get later ids, so
+# adding a recording never renumbers the poses in js/art/sprites.js. Unlisted dumps go last.
+RECORDING_ORDER = ["ball-practice", "shots-passes", "no-ball", "shot-close", "run-shot", "on-ball", "jump-ball"]
+
+
 def recordings():
-    """Every frame dump in tools/data/, the reference recording first, with shared pose ids."""
-    others = sorted(p for p in DATA.glob("*.fdump.gz") if p != DEFAULT_DUMP)
-    recs = [Recording(DEFAULT_DUMP)] + [Recording(p) for p in others]
+    """Every frame dump in tools/data/, in RECORDING_ORDER, with shared pose ids."""
+    def order(path):
+        name = path.name.split(".")[0]
+        return (RECORDING_ORDER.index(name) if name in RECORDING_ORDER else len(RECORDING_ORDER), name)
+    recs = [Recording(p) for p in sorted(DATA.glob("*.fdump.gz"), key=order)]
     share_pose_ids(recs)
     return recs
 
