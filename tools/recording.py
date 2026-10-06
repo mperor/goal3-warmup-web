@@ -1,5 +1,7 @@
 """Readers for the ball-practice recordings in tools/data/ (Python 3.10+, stdlib only).
 
+The recordings are local working files and are not committed (tools/data/ is git-ignored).
+
   ball-practice.fdump.gz  every frame of a play session: input, internal RAM, OAM
                           (written by tools/mesen/frame-dump.lua, then gzipped)
   ball-practice.g3px      one PPU snapshot of the screen: CHR tiles, palettes, OAM

@@ -2,3 +2,5 @@ tools/.cache/
 __pycache__/
 rom/
 *.nes
+tools/data/
+.idea/
