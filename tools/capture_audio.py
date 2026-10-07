@@ -47,7 +47,7 @@ RUNS = {
 # effect: (run, run it is compared with, first frame, last frame); found by diffing the runs
 SFX = {
     "kick": ("pass", "idle", 1015, 1032),
-    "shot": ("shot", "idle", 1021, 1104),       # the kick and the ball's whoosh until it lands
+    "shot": ("shot", "idle", 1021, 1127),       # the kick and the ball's whoosh, fading out
     "bounce": ("pass", "idle", 1117, 1125),
     "jump": ("pass-jump", "pass", 1300, 1309),
     "land": ("pass-jump", "pass", 1348, 1354),
@@ -159,16 +159,22 @@ def minus(a, b):
 
 
 def effect(runs, run, base, first, last):
+    """The channels the effect takes, each from its first to its last frame that differs from the run
+    without it, and in that span all the writes to it (the game holds the music's back, so these
+    are the effect's own, even where one happens to equal the music's), plus the channel switches
+    the effect adds."""
     w, b = runs[run][0], runs[base][0]
-    chans = set()
+    spans = {}
     for f in range(first, last + 1):
         for c in CHANNELS:
             if [x for x in w[f] if channel(x[0]) == c] != [x for x in b[f] if channel(x[0]) == c]:
-                chans.add(c)
+                spans[c] = (spans[c][0], f) if c in spans else (f, f)
+    chans = set(spans)
     frames = []
     for f in range(first, last + 1):
-        mine = [x for x in w[f] if channel(x[0]) in chans or x[0] == 0x15]
-        frames.append(minus(mine, [x for x in b[f] if channel(x[0]) in chans or x[0] == 0x15]))
+        own = [x for x in w[f] if channel(x[0]) in chans and spans[channel(x[0])][0] <= f <= spans[channel(x[0])][1]]
+        switches = minus([x for x in w[f] if x[0] == 0x15], [x for x in b[f] if x[0] == 0x15])
+        frames.append(own + switches)
     while frames and not frames[0]:
         frames.pop(0)
     while frames and not frames[-1]:

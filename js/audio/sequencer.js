@@ -2,8 +2,7 @@ import { CPU_HZ, FRAME_CYCLES, createApu } from './apu.js';
 
 // Plays the captured register writes through the APU, one frame of writes per NES frame: the
 // song (intro once, then the loop) and sound effects. Like the game's sound engine, an effect takes
-// its channels from the music while it lasts (the music's writes to them are held back), then the
-// music's last values are written back.
+// a channel from the music while it plays on it (the music's writes to it are held back).
 const CHANNEL_REGS = { p1: [0, 1, 2, 3], p2: [4, 5, 6, 7], tri: [8, 9, 10, 11], noise: [12, 13, 14, 15], dmc: [16, 17, 18, 19] };
 const ENABLE_BITS = { p1: 1, p2: 2, tri: 4, noise: 8, dmc: 16 };
 const CHANNEL_OF = [];
@@ -31,7 +30,6 @@ export function createSequencer(data, sampleRate) {
   Object.entries(data.samples).forEach(([address, bytes]) => memory.set(bytes, Number(address)));
   const apu = createApu((address) => memory[address]);
   const song = [...data.intro, ...data.loop];
-  const shadow = new Array(0x14).fill(null);
   let shadowEnable = 0;
   const owner = {}; // channel -> playing effect
   const effects = [];
@@ -42,8 +40,8 @@ export function createSequencer(data, sampleRate) {
   let last = 0;
   let filtered = 0;
 
-  const maskOf = (channels) => channels.reduce((m, ch) => m | ENABLE_BITS[ch], 0);
-  const effectMask = () => effects.reduce((m, e) => m | e.mask, 0);
+  const maskOf = (channels) => [...channels].reduce((m, ch) => m | ENABLE_BITS[ch], 0);
+  const effectMask = () => effects.reduce((m, e) => m | maskOf(e.held), 0);
 
   function musicWrite(reg, value) {
     if (reg === 0x15) {
@@ -51,35 +49,60 @@ export function createSequencer(data, sampleRate) {
       apu.enable(0x1f & ~effectMask(), value);
       return;
     }
-    if (reg < 0x14) shadow[reg] = value;
     if (!owner[CHANNEL_OF[reg]]) apu.write(reg, value);
   }
 
-  function release(effect) {
+  // An effect holds a channel only from its first to its last write to it.
+  function take(effect, ch) {
+    if (owner[ch] && owner[ch] !== effect) giveBack(owner[ch], ch);
+    owner[ch] = effect;
+    effect.held.add(ch);
+  }
+
+  // The music gets the channel back as it is: like the game's engine, nothing is written back, the
+  // music's next writes take over (checked against the original's writes for the shot).
+  function giveBack(effect, ch) {
+    effect.held.delete(ch);
+    if (owner[ch] !== effect) return;
+    delete owner[ch];
+    apu.enable(ENABLE_BITS[ch], playing ? shadowEnable : 0);
+  }
+
+  function end(effect) {
     effects.splice(effects.indexOf(effect), 1);
-    effect.channels.forEach((ch) => {
-      if (owner[ch] !== effect) return;
-      delete owner[ch];
-      if (!playing) return;
-      CHANNEL_REGS[ch].forEach((reg) => shadow[reg] !== null && apu.write(reg, shadow[reg]));
-    });
-    if (playing) apu.enable(effect.mask, shadowEnable);
-    else apu.enable(effect.mask, 0);
+    [...effect.held].forEach((ch) => giveBack(effect, ch));
   }
 
   function frame() {
+    // A channel an effect starts on this frame is its before the music writes to it.
+    effects.forEach((effect) => Object.entries(effect.spans)
+      .forEach(([ch, [first]]) => first === effect.position && take(effect, ch)));
     if (playing) {
       song[position].forEach(([reg, value]) => musicWrite(reg, value));
       position = position + 1 < song.length ? position + 1 : data.intro.length;
     }
     for (const effect of [...effects]) {
-      effect.frames[effect.position].forEach(([reg, value]) => {
-        if (reg === 0x15) apu.enable(effect.mask, value);
-        else apu.write(reg, value);
+      const at = effect.position;
+      effect.frames[at].forEach(([reg, value]) => {
+        // Its channel switches are for the channels it still has to play on, that no other has.
+        if (reg === 0x15) apu.enable(maskOf(Object.keys(effect.spans).filter((ch) => effect.spans[ch][1] >= at && (!owner[ch] || owner[ch] === effect))), value);
+        else if (owner[CHANNEL_OF[reg]] === effect) apu.write(reg, value);
       });
+      Object.entries(effect.spans).forEach(([ch, [, last]]) => last === at && giveBack(effect, ch));
       effect.position += 1;
-      if (effect.position >= effect.frames.length) release(effect);
+      if (effect.position >= effect.frames.length) end(effect);
     }
+  }
+
+  // Per channel, the first and the last frame of an effect that writes to it.
+  function spansOf(sfx) {
+    const spans = {};
+    sfx.frames.forEach((writes, i) => writes.forEach(([reg]) => {
+      const ch = CHANNEL_OF[reg];
+      if (!ch || !sfx.channels.includes(ch)) return;
+      spans[ch] = spans[ch] ? [spans[ch][0], i] : [i, i];
+    }));
+    return spans;
   }
 
   return {
@@ -95,11 +118,9 @@ export function createSequencer(data, sampleRate) {
     playEffect(name) {
       const sfx = data.sfx[name];
       if (!sfx) return;
-      // A newer effect takes over a channel from an older one.
-      sfx.channels.forEach((ch) => owner[ch] && release(owner[ch]));
-      const effect = { channels: sfx.channels, mask: maskOf(sfx.channels), frames: sfx.frames, position: 0 };
-      effects.push(effect);
-      sfx.channels.forEach((ch) => (owner[ch] = effect));
+      // A newer effect takes over from an older one on the same channels.
+      effects.filter((e) => e.channels.some((ch) => sfx.channels.includes(ch))).forEach(end);
+      effects.push({ channels: sfx.channels, spans: spansOf(sfx), held: new Set(), frames: sfx.frames, position: 0 });
     },
     render(out) {
       for (let i = 0; i < out.length; i++) {
