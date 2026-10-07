@@ -264,17 +264,28 @@ body {
   font-size: 10px;
   color: var(--text);
   background: transparent;
-  border: none;
-  padding: 6px 8px;
+  border: 2px solid var(--text);
+  padding: 6px 10px;
   cursor: pointer;
 }
 
+.window__button:hover,
 .window__button:focus-visible {
-  outline: 2px solid var(--text);
+  color: #ffd34d;
+  border-color: #ffd34d;
+  outline: none;
 }
 
+/* Only the label blinks; the frame stays. */
 .window__button--blink {
-  animation: blink 0.8s steps(1) infinite;
+  animation: blink-text 0.8s steps(1) infinite;
+}
+
+@keyframes blink-text {
+  50%,
+  100% {
+    color: transparent;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
