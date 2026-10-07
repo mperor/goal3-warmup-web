@@ -45,6 +45,9 @@ VX_FRAC, VX_PIX = 0x03E8, 0x03F6
 VZ_FRAC, VZ_PIX = 0x0420, 0x042E
 HANG = 0x04BD
 ITERATION = 0x0300  # incremented once per main-loop iteration (logic tick)
+# Player 1's pad as the game logic sees it, refreshed on tick frames only, bits in the order the
+# pad is read (bit 7 A ... bit 0 Right). A press between two ticks never gets here.
+PAD = 0x0004
 
 RAM_SIZE = 0x800
 OAM_SIZE = 0x100
@@ -70,6 +73,10 @@ class FrameDump:
 
     def __len__(self):
         return len(self.records)
+
+    def pad(self, f):
+        """Player 1's pad as the game logic sees it ($0004), in the bit layout of p1()."""
+        return int(f"{self.ram(f, PAD):08b}"[::-1], 2)
 
     def p1(self, f):
         return self.records[f][4]
@@ -169,7 +176,7 @@ GAMEPLAY_POSES = 21  # the reference recording's later poses only appear in the 
 
 # Recordings in the order they were made: poses first seen in a later one get later ids, so
 # adding a recording never renumbers the poses in js/art/sprites.js. Unlisted dumps go last.
-RECORDING_ORDER = ["ball-practice", "shots-passes", "no-ball", "shot-close", "run-shot", "on-ball", "jump-ball", "specials"]
+RECORDING_ORDER = ["ball-practice", "shots-passes", "no-ball", "shot-close", "run-shot", "on-ball", "jump-ball", "specials", "feint"]
 
 
 def recordings():

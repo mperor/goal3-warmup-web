@@ -26,12 +26,9 @@ def export(rec, out):
     d = rec.dump
     end = END_FRAME.get(rec.name, len(d))
     tick_frames = [f for f in range(1, end) if d.ram(f, ITERATION) != d.ram(f - 1, ITERATION)]
-    # The pad is read every frame: a tap of A or B between two ticks still counts on the next one.
-    held = {}
-    for prev, f in zip([0] + tick_frames, tick_frames):
-        held[f] = d.p1(f)
-        for g in range(prev + 1, f):
-            held[f] |= d.p1(g) & 0x03
+    # The pad as the game logic read it on the tick (a press between two ticks is lost; the logged
+    # input of a recording can be a frame off from what the game read).
+    held = {f: d.pad(f) for f in tick_frames}
     ticks = [{
         "f": f, **inputs(held[f]), "it": d.ram(f, ITERATION),
         "px": rec.x(f, PLAYER), "pz": rec.z(f, PLAYER), "pvx": rec.vx(f, PLAYER), "pvz": rec.vz(f, PLAYER),

@@ -1,12 +1,8 @@
 // Replays the original's recorded input through the game logic and compares it with RAM.
 // Needs tools/.cache/<recording>.json from tools/export_trace.py. Run: node tools/check_replay.mjs
 import { existsSync, readFileSync } from 'node:fs';
-import { createPlayer, drawnFacing, framePlayer, tickPlayer } from '../js/game/player.js';
-import { createPractice, tickPractice } from '../js/game/practice.js';
-
-const TOLERANCE = 1.01;
-const BALL_TOLERANCE = 2.01; // the original keeps a resting ball at z ~0.48 and x fractions we drop
-const SPRITE_LAG = 4;
+import { createPlayer, framePlayer, tickPlayer } from '../js/game/player.js';
+import { runScenario, SPRITE_LAG } from './replay.mjs';
 
 // Each scenario starts from the recorded state at `from`, set by hand where RAM alone is not enough.
 // With `poses`, the displayed pose and facing must match on every frame too.
@@ -104,8 +100,8 @@ const RECORDINGS = {
       { name: 'sprint with the ball, A then A+B: jump, B: shot in the air', from: 425, to: 535, poses: true,
         player: { mode: 'run', runDir: 1, vx: 3.5, runTicks: 2, hasBall: true, facing: 'right',
           animation: 'run', animFacing: 'right', animFrame: 3 } },
-      { name: 'run and sprint back towards the returning ball, skid', from: 549, to: 585, poses: true,
-        player: { mode: 'run', runDir: 1, vx: 3.5, runTicks: 1, facing: 'right',
+      { name: 'run and sprint back towards the returning ball, skid', from: 549, to: 585, poses: true, tapAgo: 1,
+        player: { mode: 'run', runDir: 1, vx: 3.5, runTicks: 1, tapDir: 1, facing: 'right',
           animation: 'run', animFacing: 'right', animFrame: 3 } },
       { name: 'walk, run, A+B: jump with the ball, B: shot in the air', from: 735, to: 860, poses: true,
         player: { facing: 'right', hasBall: true } },
@@ -125,8 +121,8 @@ const RECORDINGS = {
       { name: 'riding, A+B: jump off and the ball rolls on', from: 1661, to: 1700, poses: true,
         player: { onBall: true, mode: 'run', runDir: 1, vx: 3.25, runTicks: 20, z: 13, facing: 'right',
           animation: 'ride', animFacing: 'right', animFrame: 0 }, practice: { rideFrac: 0.824 } },
-      { name: 'run, jump over a ball: take it on the way up, B: overhead turning round', from: 1804, to: 1880, poses: true,
-        player: { mode: 'run', runDir: -1, vx: -3.5, runTicks: 2, facing: 'left', prevDir: -1,
+      { name: 'run, jump over a ball: take it on the way up, B: overhead turning round', from: 1804, to: 1880, poses: true, tapAgo: 1,
+        player: { mode: 'run', runDir: -1, vx: -3.5, runTicks: 2, tapDir: -1, facing: 'left', prevDir: -1,
           animation: 'run', animFacing: 'left', animFrame: 3 } },
     ],
   },
@@ -167,42 +163,6 @@ const RECORDINGS = {
     ],
   },
 };
-
-function runScenario({ ticks, frames }, sc) {
-  const i0 = ticks.filter((t) => t.f <= sc.from).length - 1;
-  const t0 = ticks[i0];
-  const s = createPractice(t0.px, t0.bx);
-  Object.assign(s.player, { tick: t0.it, z: t0.pz, vx: t0.pvx, vz: t0.pvz }, sc.player);
-  Object.assign(s.ball, { z: t0.bz < 1 ? 0 : t0.bz, vx: t0.bvx, vz: t0.bvz, hang: t0.hang });
-  Object.assign(s, sc.practice);
-  framePlayer(s.player);
-  const off = [];
-  let poses = 0;
-  let poseFrames = 0;
-  for (let i = i0 + 1; ticks[i] && ticks[i].f <= sc.to; i++) {
-    const t = ticks[i];
-    tickPractice(s, t);
-    const { player: p, ball: b } = s;
-    const problems = [];
-    if (Math.abs(p.x - t.px) > TOLERANCE || Math.abs(p.z - t.pz) > TOLERANCE
-      || Math.abs(b.x - t.bx) > BALL_TOLERANCE || Math.abs(b.z - t.bz) > BALL_TOLERANCE) {
-      problems.push(`player ${p.x.toFixed(1)},${p.z.toFixed(1)} want ${t.px.toFixed(1)},${t.pz.toFixed(1)}; `
-        + `ball ${b.x.toFixed(1)},${b.z.toFixed(1)} want ${t.bx.toFixed(1)},${t.bz.toFixed(1)}`);
-    }
-    const next = ticks[i + 1] ? ticks[i + 1].f : t.f + 3;
-    for (let f = t.f; f < next; f++) {
-      const pose = framePlayer(p);
-      const want = frames[f + SPRITE_LAG];
-      if (!want || want.pose === null) continue;
-      poseFrames += 1;
-      const facing = drawnFacing(p, pose);
-      if (pose === want.pose && facing === want.facing) poses += 1;
-      else if (sc.poses && f === t.f) problems.push(`pose ${pose}${facing[0]} want ${want.pose}${want.facing[0]}`);
-    }
-    if (problems.length) off.push(`${t.f}: ${problems.join('; ')}`);
-  }
-  return { off, poses: `${poses}/${poseFrames}` };
-}
 
 // Ground movement only (walk, run, skid; the run boost is a known approximation): per tick,
 // from the recorded position, does the logic produce the recorded velocity and pose?
@@ -249,7 +209,7 @@ for (const [name, { ground, scenarios }] of Object.entries(RECORDINGS)) {
     const { off, poses } = runScenario(trace, sc);
     console.log(`${off.length ? 'FAIL' : 'ok  '} ${sc.from}-${sc.to} ${sc.name} (poses ${poses})`
       + `${off.length ? ` (${off.length} ticks off)` : ''}`);
-    off.slice(0, 4).forEach((line) => console.log(`       ${line}`));
+    off.slice(0, 4).forEach(({ text }) => console.log(`       ${text}`));
     if (off.length) failed += 1;
   }
 }
