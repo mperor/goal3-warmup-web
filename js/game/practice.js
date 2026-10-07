@@ -3,6 +3,7 @@ import { createPlayer, groundAction, isRunning, startAction, tickPlayer } from '
 
 // Player-ball interaction on the ball-practice screen, measured from the recording.
 const DRIBBLE_OFFSET = 12;
+const LAND_DRIBBLE_OFFSET = 8;
 const CAPTURE_DX = 12;
 const CAPTURE_DZ = 1.5;
 const NO_CAPTURE_TICKS = 10;
@@ -37,6 +38,10 @@ const RIDE_RELEASE_Z = 7;
 // A player rising in a jump takes a ball lying under him (recorded at 15 px up).
 const AIR_CAPTURE_DZ = 16;
 const AIR_CAPTURE_LAG = 0.5;
+// A ball in flight caught by a player in the air: caught up to 13.2 px ahead and 14.0 px below,
+// missed at 15.5 px ahead and 14.1 px below.
+const AIR_CATCH_DX = 14;
+const AIR_CATCH_DZ_MIN = -14;
 const HIGH_VOLLEY_VX = 4.734375;
 const HIGH_VOLLEY_VZ = 10.25;
 const FLICK_BEHIND = 12;
@@ -47,6 +52,23 @@ const FLICK_VZ = 9;
 // turning, for the bicycle kick). One recording of each; whether vx depends on the speed is not known.
 const TOSS_VX = { volleyOwnBall: 0x166 / 256, bicycleOwnBall: 2.5 };
 const TOSS_VZ = 6.5;
+const MOUNT_MAX_VX = 2;
+// A dive hits the ball like a shot from the ground; reach from three hits and their near misses
+// (missed 20.6 px away and 10.2 px below the player).
+const DIVE_DX = 17;
+const DIVE_DZ_MIN = -10;
+const DIVE_DZ_MAX = 17;
+// One backward dive recorded: hit 29.2 px ahead 17.3 px up, missed 27.2 px ahead 20.3 px up.
+const BACK_DIVE_AHEAD = 30;
+const BACK_DIVE_DZ_MAX = 18;
+// Overhead kick in the air, from the recorded hits and misses: ahead hit 12.3 px away and 11.2 px
+// up, missed 13.6 px away and 11.5 px up; behind hit 13.1 px away 5.9 px up, missed 10.9 px up.
+const OVERHEAD_AHEAD = 13;
+const OVERHEAD_DZ_MAX = 11.25;
+const OVERHEAD_BEHIND = 14;
+const OVERHEAD_BEHIND_DZ_MAX = 8;
+// Bicycle kick: hit 22.3 px up, missed 23.5 px up.
+const BICYCLE_DZ_MAX = 23;
 
 export function createPractice(playerX, ballX) {
   return { player: createPlayer(playerX), ball: createBall(ballX), noCapture: 0, ballSteps: 1, rideFrac: 0 };
@@ -62,6 +84,34 @@ function release(s) {
 function inReach(p, b) {
   const dz = b.z - p.z;
   return Math.abs(b.x - p.x) <= HIT_DX && dz >= HIT_DZ_MIN && dz <= HIT_DZ_MAX;
+}
+
+// The overhead kick in the air reaches less high, and behind the player only low; the bicycle
+// kick reaches a little higher.
+function inKickReach(p, b) {
+  const dz = b.z - p.z;
+  if (p.action?.name === 'overhead') {
+    const ahead = (b.x - p.x) * sign(p);
+    if (dz < HIT_DZ_MIN) return false;
+    return ahead >= 0 ? ahead <= OVERHEAD_AHEAD && dz <= OVERHEAD_DZ_MAX
+      : -ahead <= OVERHEAD_BEHIND && dz <= OVERHEAD_BEHIND_DZ_MAX;
+  }
+  if (p.action?.name === 'bicycle') return Math.abs(b.x - p.x) <= HIT_DX && dz >= HIT_DZ_MIN && dz <= BICYCLE_DZ_MAX;
+  return inReach(p, b);
+}
+
+// Diving backwards (facing the other way) the player meets a ball well ahead of where he faces.
+function inDiveReach(p, b) {
+  const dz = b.z - p.z;
+  if (Math.sign(p.vx) === -sign(p)) {
+    const ahead = (b.x - p.x) * sign(p);
+    return ahead >= 0 && ahead <= BACK_DIVE_AHEAD && dz >= DIVE_DZ_MIN && dz <= BACK_DIVE_DZ_MAX;
+  }
+  return Math.abs(b.x - p.x) <= DIVE_DX && dz >= DIVE_DZ_MIN && dz <= DIVE_DZ_MAX;
+}
+
+function struck(s) {
+  if (s.player.action) s.player.action.struck = true;
 }
 
 function shoot(s, dir) {
@@ -166,19 +216,30 @@ function applyEvent(s, event) {
   } else if (event.startsWith('strike:') && !p.hasBall) {
     const [, kind, t] = event.split(':');
     strike(s, kind, Number(t));
+  } else if (event === 'dive' && !p.hasBall && inDiveReach(p, b)) {
+    groundShot(s);
   } else if (event === 'chip' && !p.hasBall && inReach(p, b)) {
     chip(s);
-  } else if (event === 'hit' && !p.hasBall && inReach(p, b)) {
+  } else if (event === 'hit' && !p.hasBall && inKickReach(p, b)) {
+    struck(s);
     shoot(s, sign(p));
-  } else if (event === 'hitBehind' && !p.hasBall && inReach(p, b)) {
+  } else if (event === 'hitBehind' && !p.hasBall && inKickReach(p, b)) {
+    struck(s);
     shoot(s, -sign(p));
   }
 }
 
 export function tickPractice(s, input) {
   const { player: p, ball: b } = s;
-  // A ball lying still is something to land on.
-  p.ballBelow = !p.hasBall && b.z < 1 && b.vz === 0 && Math.abs(b.vx) < 1 ? b.x : null;
+  // A ball on the ground is something to land on, also rolling (recorded at ~1.1 px/tick towards
+  // the player; the speed limit is a guess).
+  p.ballBelow = !p.hasBall && b.z < 1 && b.vz === 0 && Math.abs(b.vx) < MOUNT_MAX_VX ? b.x : null;
+  // A ball in flight just ahead of a player in the air is caught; the original judges it before
+  // either of them moves.
+  const ahead = (b.x - p.x) * sign(p);
+  const catchable = p.mode === 'air' && !p.action && b.z >= 1 && ahead >= 0 && ahead <= AIR_CATCH_DX
+    && b.z - p.z >= AIR_CATCH_DZ_MIN && b.z - p.z <= CAPTURE_DZ;
+  const ballX = b.x;
   const wasOnBall = p.onBall;
   const events = tickPlayer(p, input);
   if (p.onBall && !wasOnBall) s.rideFrac = b.x - Math.floor(b.x);
@@ -207,7 +268,9 @@ export function tickPractice(s, input) {
   }
 
   if (p.hasBall) {
-    const offset = DRIBBLE_OFFSET + (isRunning(p) ? (p.tick >> 1) & 3 : 0);
+    // Landing with the ball keeps it closer, until the last tick of the landing.
+    const landing = p.mode === 'land' && p.landTicks > 1;
+    const offset = landing ? LAND_DRIBBLE_OFFSET : DRIBBLE_OFFSET + (isRunning(p) ? (p.tick >> 1) & 3 : 0);
     const x = Math.floor(p.x) + offset * sign(p);
     rollBall(b, p.vx);
     Object.assign(b, { x, z: p.z, vx: p.vx, vz: 0, hang: 0 });
@@ -218,10 +281,17 @@ export function tickPractice(s, input) {
   for (let i = 0; i < s.ballSteps; i++) tickBall(b);
   s.ballSteps = s.ballSteps === 0 ? 2 : 1;
 
-  // A kick from the ground goes through with it rather than stopping the ball.
-  const kicking = p.action?.strike && !p.action.struck;
+  // A kick goes through with it rather than stopping the ball.
+  const kicking = (p.action?.strike || p.action?.hits) && !p.action.struck;
   const reached = Math.abs(b.z - p.z) <= CAPTURE_DZ
     || (p.mode === 'air' && p.vz > 0 && b.z < 1 && p.z - b.z <= AIR_CAPTURE_DZ);
+  const caught = catchable && p.mode === 'air' && !p.action;
+  if (s.noCapture === 0 && caught) {
+    // On this tick it moves with the player, at his height.
+    Object.assign(b, { x: ballX + p.vx, z: p.z, vx: p.vx, vz: 0 });
+    p.hasBall = true;
+    return;
+  }
   if (s.noCapture === 0 && !kicking && Math.abs(b.x - p.x) <= CAPTURE_DX && reached) {
     if (p.mode === 'air' && b.z < 1) {
       // Taken up from the ground: on this tick it goes with the player, a little behind.

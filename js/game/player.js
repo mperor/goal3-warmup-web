@@ -31,6 +31,11 @@ const AB_WINDOW_TICKS = 2;
 const DIVE_SPEED = 4;
 const DIVE_VZ = 3;
 const SLIDE_DECEL = 0.625;
+// Pushing along on the ground after a dive (13 pushes recorded, all alike).
+const CRAWL_READY_SPEED = 2.75;
+const CRAWL_BRACE_TICKS = 3;
+const CRAWL_PUSH_TICKS = 3;
+const CRAWL_SPEED = 4;
 // Riding the ball: dropping onto a ball lying still lands on it (crouched at MOUNT_Z), then the
 // player stands on top at RIDE_Z and the ball rolls under him; runs are a little slower there.
 const MOUNT_DX = 6;
@@ -42,6 +47,7 @@ export const POSE = {
   stand: 0, walk1: 1, walk2: 2, run1: 3, sprint1: 4, sprint2: 5, skid: 6, air: 7, jumpKick: 8, land: 9,
   windUp: 10, overhead1: 11, overhead2: 12, overheadOwnBall: 13, overhead: 14,
   flip1: 15, flip2: 16, flip3: 17, flip4: 18, lift: 19, volley: 20, pass: 21, dive: 22, slide: 23,
+  crawl: 24,
 };
 
 // Poses the original draws mirrored against the way the player faces: the bicycle kick's turn
@@ -65,6 +71,7 @@ const ANIMATIONS = {
 // Scripted actions: [pose, ticks] steps, and events emitted at a tick index (0 = the first tick).
 // An action is drawn from the end of its first tick, so the first step lasts one tick more.
 // A `strike` action emits 'strike:<kind>:<tick>' on every tick after the first until the ball is hit.
+// An action with `hits` emits its event on every tick of that window until the ball is hit.
 const ACTIONS = {
   lift: { steps: [[POSE.lift, 5]], events: { 1: 'lift' } },
   jumpKick: { steps: [[POSE.air, 3], [POSE.jumpKick, 8]], events: { 3: 'jumpKick' } },
@@ -87,14 +94,15 @@ const ACTIONS = {
     steps: [[POSE.air, 5], [POSE.overhead1, 3], [POSE.overhead2, 1], [POSE.overheadOwnBall, 7]],
     events: { 0: 'float', 8: 'hit' },
   },
+  // Meets the ball whenever it comes into reach while the leg is up (not on the overhead2 tick).
   overhead: {
     steps: [[POSE.air, 3], [POSE.overhead1, 3], [POSE.overhead2, 1], [POSE.overhead, 7]],
-    events: { 7: 'hit' },
+    events: {}, hits: { event: 'hit', from: 3, to: 12, skip: [5] },
   },
   bicycle: {
     // Turned towards the kick, then back the way the player faced before it.
     steps: [[POSE.air, 3], [POSE.windUp, 4], [POSE.flip1, 1], [POSE.flip2, 2], [POSE.flip3, 2], [POSE.flip4, 1], [POSE.air, 3]],
-    events: { 7: 'hitBehind' },
+    events: {}, hits: { event: 'hitBehind', from: 7, to: 8 },
   },
   // With the player's own ball: tossed up the way he turned, met a tick later, the turn starts a tick earlier.
   bicycleOwnBall: {
@@ -131,6 +139,9 @@ export function createPlayer(x) {
     sprinting: false,
     landed: false,
     fromDive: false,
+    crawlTicks: 0,
+    crawlDir: 0,
+    pushTicks: 0,
     onBall: false,
     rising: false,
     ballBelow: null,
@@ -178,6 +189,8 @@ function runAction(p, events) {
   if (!a) return;
   if (a.events[a.t]) events.push(a.events[a.t]);
   if (a.strike && a.t > 0 && !a.struck) events.push(`strike:${a.strike}:${a.t}`);
+  const h = a.hits;
+  if (h && !a.struck && a.t >= h.from && a.t <= h.to && !h.skip?.includes(a.t)) events.push(h.event);
   a.t += 1;
   if (a.t >= a.steps.reduce((n, [, ticks]) => n + ticks, 0)) {
     if (a.turnBack) p.facing = a.turnBack;
@@ -409,7 +422,7 @@ export function tickPlayer(p, input) {
   }
 
   if (p.mode === 'dive') {
-    diveTick(p, dir);
+    diveTick(p, dir, events);
     return events;
   }
 
@@ -419,7 +432,7 @@ export function tickPlayer(p, input) {
     if (p.fromDive && p.pending === 'b' && p.tick - p.abTick > AB_WINDOW_TICKS + 1) {
       p.pending = null;
       dive(p);
-      diveTick(p, 0);
+      diveTick(p, 0, events);
       return events;
     }
     // Taps while landing count: a double tap there starts the run once the player is up.
@@ -446,8 +459,11 @@ export function tickPlayer(p, input) {
   }
 
   if (p.rising) {
+    // Standing up on the ball takes the tick, unless a run was queued while landing: a direction
+    // pressed then neither moves him nor counts as a tap.
     p.rising = false;
     p.z = RIDE_Z;
+    if (!p.runQueued) return events;
   }
   if (p.runQueued && p.mode === 'walk') {
     startRun(p, p.runQueued);
@@ -527,22 +543,37 @@ function startKick(p, events) {
   if (p.pending === 'b' && !p.hasBall && p.pendingDir !== 0 && p.pendingDir === facingSign(p)) {
     p.pending = null;
     dive(p);
-    diveTick(p, p.prevDir);
+    diveTick(p, p.prevDir, events);
     return events;
   }
   return [...events, kick(p)];
 }
 
-function dive(p) {
+// Facing stays as it is: diving the other way goes backwards.
+function dive(p, dir = facingSign(p)) {
   p.mode = 'dive';
-  p.vx = DIVE_SPEED * facingSign(p);
+  p.vx = DIVE_SPEED * dir;
   p.vz = DIVE_VZ;
   p.landed = false;
   p.fromDive = true;
+  p.crawlTicks = 0;
+  p.pushTicks = 0;
 }
 
 // In the air like a jump (with the same steering), then a slide that ends in getting up.
-function diveTick(p, dir) {
+// While in the air, the landing tick included, the dive can hit the ball ('dive').
+// Lying after it, a direction pressed or held (once the slide has slowed down) pushes the player
+// along on his front, either way: three ticks bracing (POSE.crawl), one more, then a push.
+// B there dives again, the way he was pushing if a direction came with it.
+function diveTick(p, dir, events) {
+  if (p.landed && p.pending === 'b' && p.tick - p.abTick > AB_WINDOW_TICKS + 1) {
+    p.pending = null;
+    dive(p, p.pendingDir || facingSign(p));
+  }
+  if (p.landed && dir !== 0 && p.crawlTicks === 0 && p.pushTicks === 0 && Math.abs(p.vx) <= CRAWL_READY_SPEED) {
+    p.crawlTicks = CRAWL_BRACE_TICKS + 1;
+    p.crawlDir = dir;
+  }
   if (!p.landed) {
     if (dir !== 0) p.vx += dir * AIR_CONTROL;
     moveX(p);
@@ -553,9 +584,18 @@ function diveTick(p, dir) {
       p.vz = 0;
       p.landed = true;
     }
-  } else if (p.vx !== 0) {
+    events.push('dive');
+  } else if (p.pushTicks > 0) {
+    p.pushTicks -= 1;
+    p.vx = CRAWL_SPEED * p.crawlDir;
+    moveX(p);
+  } else if (p.vx !== 0 || p.crawlTicks > 0) {
     p.vx = approachZero(p.vx, SLIDE_DECEL);
     moveX(p);
+    if (p.crawlTicks > 0) {
+      p.crawlTicks -= 1;
+      if (p.crawlTicks === 0) p.pushTicks = CRAWL_PUSH_TICKS;
+    }
   } else {
     p.mode = 'land';
     p.landTicks = LAND_TICKS;
@@ -579,6 +619,7 @@ function currentAnimation(p) {
   if (p.action) return `action:${actionPose(p.action)}`;
   if (p.mode === 'air') return `action:${POSE.air}`;
   if (p.mode === 'land') return `action:${p.touchdown ? POSE.air : POSE.land}`;
+  if (p.mode === 'dive' && p.crawlTicks > 0) return `action:${POSE.crawl}`;
   if (p.mode === 'dive') return `action:${p.vz >= 0 && !p.landed ? POSE.dive : POSE.slide}`;
   if (p.trapping) return `action:${POSE.windUp}`;
   if (p.mode === 'skid') return p.skidPause ? p.animation : 'skid';

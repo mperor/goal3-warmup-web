@@ -5,7 +5,7 @@ const FRICTION_K = 24 / 256;
 const SLOW_FRICTION = 1 / 16;
 const BOUNCE_LOSS = 1 + 1 / 256;
 const LEFT_WALL = 4.5;
-const RIGHT_WALL = 257;
+const RIGHT_WALL = 256;
 const WALL_SPEED = 2;
 const ROTATE_EVERY_PX = 5;
 const SPIN = { left: [0, 3, 2, 1], right: [3, 4, 1, 5] };
@@ -32,6 +32,9 @@ export function tickBall(b) {
   if ((b.x >= RIGHT_WALL && b.vx > 0) || (b.x <= LEFT_WALL && b.vx < 0)) {
     b.vx = b.vx > 0 ? -WALL_SPEED : WALL_SPEED;
     b.vz = Math.max(b.vz, WALL_SPEED);
+  } else if (b.x >= RIGHT_WALL && b.vz < WALL_SPEED) {
+    // Still past the right wall on the way back: lifted once more (recorded four times).
+    b.vz += 1;
   }
 
   const airborne = b.z > 0 || b.vz > 0;

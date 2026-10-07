@@ -12,6 +12,8 @@ The recordings are local working files and are not committed (tools/data/ is git
   no-ball.fdump.gz        another session without touching the ball: Up/Down, kicks in the
                           air and on the ground, dives
   jump-ball.fdump.gz      jumps with the ball, then B in the air: alone, forward and back
+  specials.fdump.gz       dives at the ball, pushing off on the ground after a dive, the ball
+                          met in the air after the wall, jumping onto a rolling ball
   ball-practice.g3px      one PPU snapshot of the screen: CHR tiles, palettes, OAM
                           (written by tools/mesen/export-screen.lua)
 
@@ -167,7 +169,7 @@ GAMEPLAY_POSES = 21  # the reference recording's later poses only appear in the 
 
 # Recordings in the order they were made: poses first seen in a later one get later ids, so
 # adding a recording never renumbers the poses in js/art/sprites.js. Unlisted dumps go last.
-RECORDING_ORDER = ["ball-practice", "shots-passes", "no-ball", "shot-close", "run-shot", "on-ball", "jump-ball"]
+RECORDING_ORDER = ["ball-practice", "shots-passes", "no-ball", "shot-close", "run-shot", "on-ball", "jump-ball", "specials"]
 
 
 def recordings():

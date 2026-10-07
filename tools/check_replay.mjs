@@ -140,6 +140,32 @@ const RECORDINGS = {
         player: { mode: 'air', hasBall: true, facing: 'right' } },
     ],
   },
+  specials: {
+    scenarios: [
+      { name: 'dive into a slow ball: shot; push back on the ground, B: dive backwards, shot again', from: 218, to: 340,
+        poses: true, player: { mode: 'dive', fromDive: true, facing: 'right' } },
+      { name: 'dive, then push along on the ground with taps', from: 635, to: 728, poses: true,
+        player: { mode: 'dive', fromDive: true, facing: 'right', prevB: true, prevDir: 1 } },
+      { name: 'dive into a lying ball: shot; dive into it back off the wall, shot on landing', from: 1817, to: 1990,
+        poses: true, player: { mode: 'dive', fromDive: true, facing: 'right', prevB: true, prevDir: 1 } },
+      { name: 'jump onto a rolling ball, stand up, walk taps and a run on it, jump off', from: 1643, to: 1763,
+        poses: true, player: { mode: 'air', facing: 'right' } },
+      { name: 'jump, catch the ball back off the wall on the way down, land with it', from: 2470, to: 2540,
+        poses: true, player: { mode: 'air', facing: 'right' } },
+      { name: 'jump, catch the falling ball, land with it', from: 3280, to: 3335, poses: true,
+        player: { mode: 'air', facing: 'right' } },
+      { name: 'sprint jump, catch the ball back off the wall, B + back: bicycle with it', from: 3731, to: 3830,
+        poses: true, player: { mode: 'air', facing: 'right', prevA: true, prevB: true, prevDir: 1 } },
+      { name: 'jump under a high ball, B + back: bicycle meets it 22 px up', from: 2564, to: 2645, poses: true,
+        player: { mode: 'air', facing: 'right', prevA: true, prevB: true } },
+      { name: 'jump under a high ball, B: overhead waits until it drops into reach', from: 3122, to: 3210, poses: true,
+        player: { mode: 'air', facing: 'right', prevA: true, prevB: true } },
+      { name: 'jump under a high ball, B held: overhead waits until it drops into reach', from: 3353, to: 3445,
+        poses: true, player: { mode: 'air', facing: 'right', prevA: true, prevB: true } },
+      { name: 'jump at a ball dropping off the wall, B: overhead meets it early', from: 3476, to: 3545, poses: true,
+        player: { mode: 'air', facing: 'right', prevA: true, prevB: true } },
+    ],
+  },
 };
 
 function runScenario({ ticks, frames }, sc) {
