@@ -15,6 +15,8 @@ const SHOT_HANG_TICKS = 13;
 const TRAP_DX = 16;
 const TRAP_MAX_Z = 24;
 const TRAP_PULL = 0.5;
+const TRAP_FOOT_Z = 15;
+const FALL_CAPTURE_VZ = 2;
 // Ground volleys: met at ~27 px or lower a chip, at ~31 px a much higher lob. Threshold guessed.
 const VOLLEY_HIGH_Z = 29;
 const CHIP_VX = 3;
@@ -169,6 +171,8 @@ function startKick(s, button) {
   if (button === 'b') p.facing = 'right';
   if (p.hasBall) name = button === 'a' ? 'pass' : 'shot';
   // A without the ball and nothing high to volley swings the pass kick at the air.
+  // At a ball still going up above him he only goes through the lift (it is out of reach).
+  else if (button === 'a' && high && b.vz > 0) name = 'lift';
   else if (button === 'a') name = high ? 'groundVolley' : 'pass';
   else name = high ? 'volleyShot' : 'groundOverhead';
   startAction(p, name);
@@ -203,6 +207,7 @@ function applyEvent(s, event) {
   const { player: p, ball: b } = s;
   if (event === 'lift' && p.hasBall) {
     release(s);
+    s.lifted = true;
     b.vx = 0;
     b.vz = 8;
   } else if (event === 'jumpKick' && p.hasBall) {
@@ -304,6 +309,7 @@ function step(s, input) {
     && b.z - p.z >= AIR_CATCH_DZ_MIN && b.z - p.z <= CAPTURE_DZ;
   const ballX = b.x;
   const wasOnBall = p.onBall;
+  p.ballHigh = Math.max(0, b.z + b.vz) >= VOLLEY_SHOT_MIN_Z;
   const events = tickPlayer(p, input);
   if (p.onBall && !wasOnBall) s.rideFrac = b.x - Math.floor(b.x);
   if (events[0] === 'offBall') {
@@ -342,11 +348,14 @@ function step(s, input) {
   }
 
   for (let i = 0; i < s.ballSteps; i++) if (tickBall(b)) s.sounds.push('bounce');
+  // A lifted ball is let drop to the ground before it can be trapped.
+  if (s.lifted && b.grounded) s.lifted = false;
   s.ballSteps = s.ballSteps === 0 ? 2 : 1;
 
   // A kick goes through with it rather than stopping the ball.
   const kicking = (p.action?.strike || p.action?.hits) && !p.action.struck;
-  const reached = Math.abs(b.z - p.z) <= CAPTURE_DZ
+  // A ball coming down fast to the ground bounces first, unless it is being trapped.
+  const reached = (Math.abs(b.z - p.z) <= CAPTURE_DZ && !(b.z < 1 && b.vz < -FALL_CAPTURE_VZ && !p.trapping))
     || (p.mode === 'air' && p.vz > 0 && b.z < 1 && p.z - b.z <= AIR_CAPTURE_DZ);
   const caught = catchable && p.mode === 'air' && !p.action;
   if (s.noCapture === 0 && caught) {
@@ -369,9 +378,11 @@ function step(s, input) {
   const dx = b.x - p.x;
   const onFoot = p.mode === 'walk' && p.z === 0 && !p.action && !p.pending;
   const wasTrapping = p.trapping;
-  p.trapping = onFoot && !input.a && b.z >= 1 && b.z <= TRAP_MAX_Z && Math.abs(dx) <= TRAP_DX
-    && (wasTrapping || b.vz < 0);
+  p.trapping = onFoot && !input.a && !s.lifted && b.z >= 1 && b.z <= TRAP_MAX_Z && Math.abs(dx) <= TRAP_DX
+    && (wasTrapping || b.vz < 0 || b.z < TRAP_FOOT_Z);
   if (p.trapping && !wasTrapping) {
+    // Low it is stopped with the foot, higher with the thigh.
+    p.trapLow = b.z < TRAP_FOOT_Z;
     // Cushioned: the ball stops in the air for a moment, then drops towards the feet.
     b.vx = 0;
     b.vz = TRAP_PULL;

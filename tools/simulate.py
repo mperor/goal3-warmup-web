@@ -84,6 +84,9 @@ PLANS = {
     "run-long": (420, [(5, 80, "L"), (90, 93, "R"), *double_tap(110, "R")]),
     "feint-u-noball": (300, [*tap(10, "A", 2), (60, 70, "L"), *double_tap(100, "U"), (110, 130, "U"),
                              *tap(134, "U"), (134, 250, "U")]),
+    # A lift (A+B with the ball), then B, A or A+B some ticks later: when it is taken.
+    **{f"lift-{k.lower()}-{n}": (180, [*tap(31, "AB", 2), *tap(31 + 3 * n, k, 2)])
+       for k in ("B", "A", "AB") for n in (1, 2, 3, 4, 5, 6)},
     # A run with the ball, then Up or Down: pressed and held, tapped, with the run's direction too.
     "ball-run-up-held": (400, [*double_tap(30, "R"), (40, 100, "R"), (100, 300, "U")]),
     "ball-run-up-tap": (400, [*double_tap(30, "R"), (40, 100, "R"), *tap(100, "U")]),
