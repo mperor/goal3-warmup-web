@@ -7,14 +7,17 @@ import { createRenderer } from './render.js';
 
 const FRAMES_PER_TICK = 3;
 
-export function startGame(canvas) {
+export function startGame(canvas, sound) {
   const input = createInput();
   const render = createRenderer(canvas);
   const practice = createPractice(START.playerX, START.ballX);
   let frame = 0;
 
   startLoop(() => {
-    if (frame % FRAMES_PER_TICK === 0) tickPractice(practice, input.snapshot());
+    if (frame % FRAMES_PER_TICK === 0) {
+      tickPractice(practice, input.snapshot());
+      practice.sounds.forEach((name) => sound?.play(name));
+    }
     frame += 1;
 
     const { player, ball } = practice;

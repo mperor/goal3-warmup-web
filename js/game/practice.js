@@ -71,7 +71,7 @@ const OVERHEAD_BEHIND_DZ_MAX = 8;
 const BICYCLE_DZ_MAX = 23;
 
 export function createPractice(playerX, ballX) {
-  return { player: createPlayer(playerX), ball: createBall(ballX), noCapture: 0, ballSteps: 1, rideFrac: 0 };
+  return { player: createPlayer(playerX), ball: createBall(ballX), noCapture: 0, ballSteps: 1, rideFrac: 0, sounds: [] };
 }
 
 const sign = (p) => (p.facing === 'left' ? -1 : 1);
@@ -122,6 +122,7 @@ function shoot(s, dir) {
   b.vx = SHOT_SPEED * dir;
   b.vz = 0;
   b.hang = SHOT_HANG_TICKS + 1; // counted down on the shot tick already
+  s.sounds.push('shot');
 }
 
 function chip(s) {
@@ -130,6 +131,7 @@ function chip(s) {
   b.vx = CHIP_VX * sign(p);
   b.vz = CHIP_VZ;
   b.hang = 0;
+  s.sounds.push('kick');
 }
 
 function groundShot(s) {
@@ -168,6 +170,7 @@ function strike(s, kind, t) {
     b.vz = HIGH_VOLLEY_VZ;
     b.hang = 0;
     s.ballSteps = 0;
+    s.sounds.push('kick');
   } else {
     chip(s);
   }
@@ -185,6 +188,7 @@ function applyEvent(s, event) {
     b.vz = CHIP_VZ;
     // The original leaves the ball in place on the kick tick and moves it twice on the next.
     s.ballSteps = 0;
+    s.sounds.push('kick');
   } else if (event === 'flickUp' && s.flickFromRide) {
     s.flickFromRide = false;
     s.noCapture = NO_CAPTURE_TICKS;
@@ -211,6 +215,7 @@ function applyEvent(s, event) {
     b.vx = CHIP_VX * sign(p);
     b.vz = PASS_VZ;
     b.hang = 0;
+    s.sounds.push('kick');
   } else if (event === 'shot' && p.hasBall) {
     groundShot(s);
   } else if (event.startsWith('strike:') && !p.hasBall) {
@@ -229,7 +234,19 @@ function applyEvent(s, event) {
   }
 }
 
+// Advances one logic tick. s.sounds lists the sound effects of the tick ('kick', 'shot', 'bounce',
+// 'jump', 'land', 'pickup').
 export function tickPractice(s, input) {
+  const p = s.player;
+  const before = { mode: p.mode, landed: p.landed, hasBall: p.hasBall };
+  s.sounds = [];
+  step(s, input);
+  if (p.mode === 'air' && before.mode !== 'air' && p.vz > 0) s.sounds.push('jump');
+  if ((before.mode === 'air' && p.mode === 'land') || (p.mode === 'dive' && p.landed && !before.landed)) s.sounds.push('land');
+  if (p.hasBall && !before.hasBall) s.sounds.push('pickup');
+}
+
+function step(s, input) {
   const { player: p, ball: b } = s;
   // A ball on the ground is something to land on, also rolling (recorded at ~1.1 px/tick towards
   // the player; the speed limit is a guess).
@@ -278,7 +295,7 @@ export function tickPractice(s, input) {
     return;
   }
 
-  for (let i = 0; i < s.ballSteps; i++) tickBall(b);
+  for (let i = 0; i < s.ballSteps; i++) if (tickBall(b)) s.sounds.push('bounce');
   s.ballSteps = s.ballSteps === 0 ? 2 : 1;
 
   // A kick goes through with it rather than stopping the ball.

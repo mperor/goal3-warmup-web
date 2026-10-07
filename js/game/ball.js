@@ -20,11 +20,14 @@ function friction(v) {
   return v - v * FRICTION_K;
 }
 
+// Returns whether the ball bounced off the ground (and goes up again) on this tick.
 export function tickBall(b) {
+  let bounced = false;
   if (b.z === 0 && b.vz < 0) {
     const vz = -b.vz / 2 - BOUNCE_LOSS;
     b.vz = vz > 0 ? vz : 0;
     b.vx = friction(b.vx);
+    bounced = vz > 0;
   } else if (b.z === 0 && b.vz === 0) {
     b.vx = friction(b.vx);
   }
@@ -44,6 +47,7 @@ export function tickBall(b) {
   else if (airborne) b.vz -= GRAVITY;
 
   rollBall(b, b.vx);
+  return bounced;
 }
 
 export function rollBall(b, dx) {
