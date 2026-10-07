@@ -85,6 +85,15 @@ PLANS = {
     "feint-u-noball": (300, [*tap(10, "A", 2), (60, 70, "L"), *double_tap(100, "U"), (110, 130, "U"),
                              *tap(134, "U"), (134, 250, "U")]),
     "pass-rest": (700, [*tap(10, "A", 2)]),
+    # Running left with the ball (from the right side), a jump with it, then B: an overhead kick
+    # turning towards the goal, plain and with a direction, at different times in the jump.
+    **{f"runleft-{k.lower() or 'b'}-{d}": (320, [(5, 45, "R"), *double_tap(80, "L"), (90, 150, "L"),
+                                                *tap(150, "AB", 2), *tap(150 + d, k + "B" if k else "B", 2)])
+       for k in ("", "L", "R") for d in (6, 9, 12, 15)},
+    **{f"sprintleft-{k.lower() or 'b'}-{d}": (320, [(5, 45, "R"), *double_tap(80, "L"), (90, 120, "L"),
+                                                   *tap(124, "L"), (124, 150, "L"),
+                                                   *tap(150, "AB", 2), *tap(150 + d, k + "B" if k else "B", 2)])
+       for k in ("", "L") for d in (6, 12)},
     # Reach sweeps around the ball lying still at x 199.28 after the pass (from frame ~270): jumping
     # onto it from a walk (Right held) and from standing, after walking for n frames.
     **{f"mount-walk-{n}": (500, [*tap(10, "A", 2), (300, 300 + n + 60, "R"), *tap(300 + n, "AB", 2)])

@@ -40,6 +40,10 @@ const CHIP_VX = 3;
 const CHIP_VZ = 7;
 const PASS_VZ = 8;
 const FLOAT_LEAD = 0.25;
+// Turning round for it (towards the goal) he tosses it forward the less, the faster he was going
+// the other way (fitted to 7 tosses: -0.375 at -3 px/tick, 1.125 at -1.75).
+const FLOAT_TURNED_VX = 3.225;
+const FLOAT_TURNED_K = 1.2;
 // B without the ball: a ball still this high when the kick starts is volleyed, a lower one is
 // met with an overhead kick (recorded: ~31 px and up volleyed, 29 px and below overhead).
 const VOLLEY_SHOT_MIN_Z = 30;
@@ -287,12 +291,15 @@ function applyEvent(s, event) {
   } else if (event === 'float' && p.hasBall) {
     // Tossed up ahead of the player, just faster; turning round for the kick leaves it nearly still.
     release(s);
-    b.vx = p.action.turned ? p.vx / 8 : p.vx + FLOAT_LEAD * sign(p);
+    b.vx = p.action.turned ? (FLOAT_TURNED_VX + FLOAT_TURNED_K * p.vx * sign(p)) * sign(p) : p.vx + FLOAT_LEAD * sign(p);
     b.vz = 3.5;
   } else if (event === 'toss' && p.hasBall) {
     release(s);
-    // Having turned round for the volley he tosses it up nearly straight.
-    b.vx = (p.action.turned ? TOSS_TURNED_VX : TOSS_VX[p.action.name]) * sign(p);
+    // Turned round for the volley, or already facing away for the bicycle kick, he tosses it up
+    // nearly straight, a little towards the goal; turning away for the bicycle kick, back the way
+    // he turned.
+    const plain = p.action.name === 'bicycleOwnBall' ? p.action.turned : !p.action.turned;
+    b.vx = plain ? TOSS_VX[p.action.name] * sign(p) : TOSS_TURNED_VX;
     b.vz = TOSS_VZ;
   } else if (event === 'pass' && p.hasBall) {
     release(s);

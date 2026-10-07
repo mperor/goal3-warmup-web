@@ -288,6 +288,7 @@ function airTick(p, dir, aEdge, bEdge, events) {
         startAction(p, p.hasBall ? 'bicycleOwnBall' : 'bicycle');
         // He comes out of it facing the goal.
         p.action.turnBack = 'right';
+        p.action.turned = facing !== 'left';
       } else {
         p.vx /= 2;
         p.facing = 'right';
