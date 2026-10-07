@@ -168,6 +168,8 @@ const RECORDINGS = {
         poses: true, player: { facing: 'right' } },
       { name: 'lift, run under it: juggle off the thigh, sprint, juggle off the foot, trap at the wall', from: 530, to: 700,
         poses: true, player: { facing: 'right' } },
+      { name: 'lift, then keep it up with A: in front and with the heel behind, moving under it between', from: 1210,
+        to: 2640, poses: true, player: { facing: 'right', hasBall: true } },
     ],
   },
 };

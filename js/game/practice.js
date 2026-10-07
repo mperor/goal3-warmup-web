@@ -18,6 +18,10 @@ const TRAP_DX = 16;
 const TRAP_MAX_Z = 32; // before it moves; trapped up to 31.4 px recorded
 const TRAP_PULL = 0.5;
 const TRAP_BRAKE = 1;
+// Keeping the ball up with A: how far to the side, how low it has come, the knock up.
+const KEEP_UP_DX = 14;
+const KEEP_UP_Z = 12;
+const KEEP_UP_VZ = 8;
 const TRAP_CARRY_DX = 9;
 // Juggling it on the run: reach (before either moves), the knock up, the lead it keeps.
 const JUGGLE_MAX_Z = 30;
@@ -208,9 +212,12 @@ function startKick(s, button) {
   if (button === 'b') p.facing = 'right';
   if (p.hasBall) name = button === 'a' ? 'pass' : 'shot';
   // A without the ball and nothing high to volley swings the pass kick at the air.
-  // At a ball still going up above him he only goes through the lift (it is out of reach).
-  else if (button === 'a' && high && b.vz > 0) name = 'lift';
-  else if (button === 'a') name = high ? 'groundVolley' : 'pass';
+  // At a ball in the air above him (and not to be volleyed as it comes down) A goes through the
+  // lift: keeping it up, it knocks the ball up again as it drops to his foot (tools/data, the
+  // juggle recording); behind him with the heel. A high ball coming in from the side is volleyed.
+  else if (button === 'a' && b.z >= 1 && Math.abs(b.x - p.x) <= KEEP_UP_DX && (!high || b.vz > 0 || b.vx === 0)) {
+    name = (b.x - p.x) * sign(p) < 0 ? 'keepUpBehind' : 'keepUp';
+  } else if (button === 'a') name = high ? 'groundVolley' : 'pass';
   else name = high ? 'volleyShot' : 'groundOverhead';
   startAction(p, name);
   p.trapping = false;
@@ -296,6 +303,14 @@ function applyEvent(s, event) {
       b.vx = CHIP_VX * sign(p);
       b.vz = PASS_VZ;
     }
+    b.hang = 0;
+    s.sounds.push('kick');
+  } else if (event === 'keepUp' && !p.hasBall && b.vz < 0 && b.z <= KEEP_UP_Z && Math.abs(b.x - p.x) <= KEEP_UP_DX) {
+    struck(s);
+    s.lifted = true;
+    b.vx = 0;
+    b.vy = 0;
+    b.vz = KEEP_UP_VZ;
     b.hang = 0;
     s.sounds.push('kick');
   } else if (event === 'shot' && p.hasBall) {

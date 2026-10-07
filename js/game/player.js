@@ -80,6 +80,9 @@ const ANIMATIONS = {
 const ACTIONS = {
   // A press on its last ticks is kept for when it is over (B there: a volley at the ball coming down).
   lift: { steps: [[POSE.lift, 6]], events: { 1: 'lift' }, inputFrom: 4, abFrom: 5 },
+  // A at a ball in the air above him: the same motion, meeting the ball as it drops to the foot.
+  keepUp: { steps: [[POSE.lift, 6]], decel: 1, events: {}, hits: { event: 'keepUp', from: 1, to: 5 } },
+  keepUpBehind: { steps: [[POSE.volley, 6]], decel: 1, events: {}, hits: { event: 'keepUp', from: 1, to: 5 } },
   jumpKick: { steps: [[POSE.air, 3], [POSE.jumpKick, 8]], events: { 3: 'jumpKick' } },
   volley: { steps: [[POSE.air, 2], [POSE.windUp, 7], [POSE.volley, 4]], events: { 8: 'chip' } },
   // B with the facing direction in the air: the same volley, hit as a shot.
@@ -604,8 +607,6 @@ export function tickPlayer(p, input) {
     return events;
   }
 
-  // Without the ball, A or B ends a run (a skid still goes first); with it the run goes on.
-  if (p.pending && !p.hasBall && p.mode === 'run' && dir !== -p.runDir) p.mode = 'walk';
   if (kickReady(p)) return startKick(p, events);
   // Knocking the ball up on the run he goes on at the same speed.
   if (p.juggleTicks > 0 && p.mode === 'run') {
