@@ -156,32 +156,7 @@ body {
   clip-path: inset(50%);
   white-space: nowrap;
 }
-/* Sound */
-
-.sound-toggle {
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  font-family: var(--font-pixel);
-  font-size: 10px;
-  line-height: 1;
-  color: var(--text);
-  background: transparent;
-  border: 2px solid var(--text);
-  padding: 6px 8px;
-  cursor: pointer;
-}
-
-.sound-toggle[aria-pressed="true"] {
-  opacity: 0.6;
-}
-
-.sound-toggle:focus-visible {
-  outline: 2px solid var(--text);
-  outline-offset: 2px;
-}
-
-/* Windows (start, tribute): a black box with a white frame, like the game's menus */
+/* The window (Esc): a black box with a white frame, like the game's menus */
 
 .window {
   margin: auto;
@@ -200,64 +175,86 @@ body {
   background: #000;
   border: 4px double var(--text);
   padding: 20px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
   font-family: var(--font-pixel);
   font-size: 9px;
   line-height: 1.9;
 }
 
 .window__title {
-  font-family: var(--font-pixel);
+  font-family: var(--font-ja);
   font-weight: 400;
-  font-size: 14px;
+  font-size: 20px;
   line-height: 1.4;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
-.window__title:lang(ja),
 .window [lang="ja"] {
   font-family: var(--font-ja);
 }
 
-.window__title:lang(ja) {
-  font-size: 20px;
+.window__text {
+  margin-bottom: 18px;
 }
 
-.window__text,
-.window__note {
-  margin-bottom: 14px;
+/* Every section the same way: a heading, then its rows indented under it. */
+.window__heading {
+  font-weight: 400;
+  font-size: 10px;
+  line-height: 1.4;
+  margin-bottom: 8px;
 }
 
-.window__note {
-  opacity: 0.7;
+.window__keys,
+.window__list {
+  padding-left: 16px;
+  margin-bottom: 18px;
 }
 
 .window__keys {
   display: grid;
   grid-template-columns: max-content 1fr;
   column-gap: 16px;
-  margin-bottom: 18px;
 }
 
-.window__keys dt {
+.window__keys dt,
+.window__value {
   color: #ffd34d;
 }
 
-.window__links {
+.window__list {
   list-style: none;
-  margin-bottom: 14px;
 }
 
-.window__links li::before {
+.window__list li::before {
   content: "▶ ";
 }
 
-.window__links a {
+.window__list a,
+.window__option {
+  font: inherit;
   color: var(--text);
 }
 
-.window__links a:hover,
-.window__links a:focus-visible {
+.window__option {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.window__list a:hover,
+.window__list a:focus-visible,
+.window__option:hover,
+.window__option:focus-visible {
   color: #ffd34d;
+  outline: none;
+}
+
+.window__note {
+  margin-bottom: 14px;
+  opacity: 0.7;
 }
 
 .window__button {
