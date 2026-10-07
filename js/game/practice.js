@@ -531,7 +531,7 @@ function step(s, input) {
   // Judged before either moved this tick (once trapping, as it is now).
   const tz = wasTrapping ? b.z : ballZ;
   const tdx = wasTrapping ? dx : ballX - playerX;
-  p.trapping = onFoot && !input.a && !(s.lifted && standing && !wasTrapping) && (wasTrapping || tz >= 1) && tz <= TRAP_MAX_Z
+  p.trapping = onFoot && !input.a && !(s.lifted && standing && !wasTrapping) && (wasTrapping || (tz >= 1 && tz <= TRAP_MAX_Z))
     && Math.abs(tdx) <= TRAP_DX && (wasTrapping || ballVz < 0 || tz < TRAP_FOOT_Z);
   if (p.trapping && !wasTrapping) {
     // Low it is stopped with the foot, higher with the thigh. Taken before either moves this tick:
