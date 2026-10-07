@@ -61,7 +61,11 @@ export function createSound() {
   }
 
   return {
+    // Starts the sound, or resumes it after pause().
     start,
+    pause() {
+      if (context) context.suspend();
+    },
     play(name) {
       if (node) node.port.postMessage({ type: 'sfx', name });
     },

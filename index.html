@@ -24,12 +24,44 @@
       <div class="pitch__ground" aria-hidden="true"></div>
     </main>
 
-    <button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="false" title="Mute (M)">SOUND ON</button>
-
     <footer class="credits">
       <p data-pixel-text="serif8">&copy; 1993 TECHNOS JAPAN CORP.</p>
     </footer>
   </div>
+
+  <button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="false" title="Mute (M)">SOUND ON</button>
+
+  <dialog id="start-dialog" class="window" aria-labelledby="start-title">
+    <div class="window__box">
+      <h2 id="start-title" class="window__title">WARM-UP</h2>
+      <p class="window__text">The ball-practice screen of <span lang="ja">くにおくんの熱血サッカーリーグ</span> (Technōs Japan, Famicom, 1993), rebuilt for the web as a tribute.</p>
+      <dl class="window__keys">
+        <dt>LEFT RIGHT</dt><dd>move (tap twice: run)</dd>
+        <dt>X</dt><dd>A: pass, kick</dd>
+        <dt>Z</dt><dd>B: shoot, dive</dd>
+        <dt>SPACE</dt><dd>A+B: jump</dd>
+        <dt>ENTER</dt><dd>about the game</dd>
+        <dt>M</dt><dd>sound on / off</dd>
+      </dl>
+      <button class="window__button window__button--blink" type="button" autofocus>PRESS ANY KEY</button>
+    </div>
+  </dialog>
+
+  <dialog id="tribute-dialog" class="window" aria-labelledby="tribute-title">
+    <div class="window__box" tabindex="-1" autofocus>
+      <h2 id="tribute-title" class="window__title" lang="ja">くにおくんの熱血サッカーリーグ</h2>
+      <p class="window__text">Released on 23 April 1993 for the Famicom, made by Technōs Japan, the team behind Kunio-kun. Since 2015 the series belongs to Arc System Works.</p>
+      <ul class="window__links">
+        <li><a href="https://ja.wikipedia.org/wiki/%E3%81%8F%E3%81%AB%E3%81%8A%E3%81%8F%E3%82%93%E3%81%AE%E7%86%B1%E8%A1%80%E3%82%B5%E3%83%83%E3%82%AB%E3%83%BC%E3%83%AA%E3%83%BC%E3%82%B0" target="_blank" rel="noopener">Wikipedia (日本語): the game</a></li>
+        <li><a href="https://kuniokun.fandom.com/wiki/Kunio-kun's_Nekketsu_Soccer_League" target="_blank" rel="noopener">Kunio-kun Wiki: the game</a></li>
+        <li><a href="https://en.wikipedia.org/wiki/Techn%C5%8Ds_Japan" target="_blank" rel="noopener">Wikipedia: Technōs Japan, its makers</a></li>
+        <li><a href="https://www.kuniokun.jp/famicom/" target="_blank" rel="noopener">Arc System Works: Kunio-kun Nekketsu Complete (3DS), with this game</a></li>
+      </ul>
+      <p class="window__note">A non-commercial fan tribute; the game and its art, music and characters belong to their owners.</p>
+      <form method="dialog"><button class="window__button" type="submit">BACK (ESC)</button></form>
+    </div>
+  </dialog>
+
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

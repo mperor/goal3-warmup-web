@@ -180,3 +180,108 @@ body {
   outline: 2px solid var(--text);
   outline-offset: 2px;
 }
+
+/* Windows (start, tribute): a black box with a white frame, like the game's menus */
+
+.window {
+  margin: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  max-width: min(480px, calc(100vw - 32px));
+}
+
+.window::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.window__box {
+  background: #000;
+  border: 4px double var(--text);
+  padding: 20px;
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  line-height: 1.9;
+}
+
+.window__title {
+  font-family: var(--font-pixel);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.4;
+  margin-bottom: 14px;
+}
+
+.window__title:lang(ja),
+.window [lang="ja"] {
+  font-family: var(--font-ja);
+}
+
+.window__title:lang(ja) {
+  font-size: 20px;
+}
+
+.window__text,
+.window__note {
+  margin-bottom: 14px;
+}
+
+.window__note {
+  opacity: 0.7;
+}
+
+.window__keys {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 16px;
+  margin-bottom: 18px;
+}
+
+.window__keys dt {
+  color: #ffd34d;
+}
+
+.window__links {
+  list-style: none;
+  margin-bottom: 14px;
+}
+
+.window__links li::before {
+  content: "▶ ";
+}
+
+.window__links a {
+  color: var(--text);
+}
+
+.window__links a:hover,
+.window__links a:focus-visible {
+  color: #ffd34d;
+}
+
+.window__button {
+  display: block;
+  margin: 0 auto;
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.window__button:focus-visible {
+  outline: 2px solid var(--text);
+}
+
+.window__button--blink {
+  animation: blink 0.8s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .window__button--blink {
+    animation: none;
+  }
+}
