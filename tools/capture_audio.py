@@ -130,6 +130,22 @@ def loop_start(writes):
     raise SystemExit(f"no clean loop start for a period of {LOOP_FRAMES} frames")
 
 
+def carried_over(writes):
+    """The sound chip is not reset between songs: the warm-up song starts with registers as the title
+    music left them, and writes some only later (the channel enable $4015 at 0.8 s, so its first
+    notes would not sound from a reset chip). The writes that set them up, without starting notes
+    and without restarting a DPCM sample."""
+    state = {}
+    for f in range(MUSIC_START):
+        for reg, value in writes[f]:
+            state[reg] = value
+    regs = [0x00, 0x01, 0x04, 0x05, 0x08, 0x0C, 0x0E, 0x10, 0x12, 0x13, 0x17]
+    out = [(reg, state[reg]) for reg in regs if reg in state]
+    if 0x15 in state:
+        out.append((0x15, state[0x15] & 0x0F))
+    return out
+
+
 def minus(a, b):
     """Writes in a that b lacks, in a's order (b's writes are taken out one for one)."""
     rest = list(b)
@@ -178,6 +194,7 @@ def main():
         samples.update(s)
 
     intro = [music[f] for f in range(MUSIC_START, start)]
+    intro[0] = carried_over(music) + intro[0]
     loop = [music[f] for f in range(start, start + LOOP_FRAMES)]
     sfx = {}
     for name, spec in SFX.items():
