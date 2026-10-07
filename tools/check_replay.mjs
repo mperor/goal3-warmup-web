@@ -162,6 +162,14 @@ const RECORDINGS = {
         player: { mode: 'air', facing: 'right', prevA: true, prevB: true } },
     ],
   },
+  juggle: {
+    scenarios: [
+      { name: 'lift, walk under it: trap; lift again, trap it walking the other way; foot trap at the wall', from: 2, to: 700,
+        poses: true, player: { facing: 'right' } },
+      { name: 'lift, run under it: juggle off the thigh, sprint, juggle off the foot, trap at the wall', from: 530, to: 700,
+        poses: true, player: { facing: 'right' } },
+    ],
+  },
 };
 
 // Ground movement only (walk, run, skid; the run boost is a known approximation): per tick,

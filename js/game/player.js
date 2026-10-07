@@ -201,7 +201,7 @@ function moveX(p) {
   return push;
 }
 
-function approachZero(v, step) {
+export function approachZero(v, step) {
   return v > 0 ? Math.max(0, v - step) : Math.min(0, v + step);
 }
 
@@ -374,15 +374,15 @@ function groundTick(p, dir, pressed, verticalKey) {
     return;
   }
   // A double tap starts a run, and in a run the way it goes, a boost.
-  if (pressed && tap(p, dir, key)) {
+  if (pressed && !(p.juggleTicks > 0) && tap(p, dir, key)) {
     if (p.mode === 'run' && dir === p.runDir && key && p.hasBall && p.boost === 0 && p.runTicks >= BOOST_MIN_RUN_TICKS) {
       startAction(p, 'feint');
       groundAction(p, []);
       return;
     } else if (p.mode === 'run' && dir === p.runDir) {
-      // Right after a boost the next one has to wait a tick.
+      // Right after a boost the next one has to wait a tick; none while knocking the ball up.
       if (p.boostRest > 0) p.boostQueued = true;
-      else if (p.boost === 0 && p.runTicks >= BOOST_MIN_RUN_TICKS) {
+      else if (p.boost === 0 && p.runTicks >= BOOST_MIN_RUN_TICKS && !(p.juggleTicks > 0)) {
         p.boost = BOOST_TICKS;
         p.boostKey = key;
       }
@@ -460,6 +460,8 @@ export function tickPlayer(p, input) {
   p.vertical = vertical;
   p.verticalTap = false;
   p.stepped = false;
+  p.trapCaught = false;
+  if (p.juggleTicks > 0) p.juggleTicks -= 1;
   const wasSprinting = p.sprinting;
   p.sprinting = false;
   const aEdge = input.a && !p.prevA;
@@ -590,7 +592,9 @@ export function tickPlayer(p, input) {
   }
 
   if (p.trapping && p.mode === 'walk') {
-    p.vx = 0;
+    // Trapping the ball he brakes to a stop.
+    p.vx = approachZero(p.vx, 1);
+    moveX(p);
     return events;
   }
   if (p.settleTicks > 0) {
@@ -603,6 +607,12 @@ export function tickPlayer(p, input) {
   // Without the ball, A or B ends a run (a skid still goes first); with it the run goes on.
   if (p.pending && !p.hasBall && p.mode === 'run' && dir !== -p.runDir) p.mode = 'walk';
   if (kickReady(p)) return startKick(p, events);
+  // Knocking the ball up on the run he goes on at the same speed.
+  if (p.juggleTicks > 0 && p.mode === 'run') {
+    p.runTicks += 1;
+    moveX(p);
+    return events;
+  }
   groundTick(p, dir, pressed, verticalKey);
   // A skid that just ended lets a waiting kick go on the same tick.
   if (kickReady(p)) return startKick(p, events);
@@ -704,7 +714,8 @@ function currentAnimation(p) {
   if (p.mode === 'land') return `action:${p.touchdown ? POSE.air : POSE.land}`;
   if (p.mode === 'dive' && p.crawlTicks > 0) return `action:${POSE.crawl}`;
   if (p.mode === 'dive') return `action:${p.vz >= 0 && !p.landed ? POSE.dive : POSE.slide}`;
-  if (p.trapping) return `action:${p.trapLow ? POSE.lift : POSE.windUp}`;
+  if (p.juggleTicks > 0) return `action:${p.juggleLow ? POSE.lift : POSE.windUp}`;
+  if (p.trapping || p.trapCaught) return `action:${p.trapLow ? POSE.lift : POSE.windUp}`;
   if (p.mode === 'skid') return p.skidPause ? p.animation : 'skid';
   if (p.skidHold > 0) return 'skid';
   // Sprint poses alternate each tick of a boost, the last tick repeating the second one.

@@ -1,5 +1,5 @@
 import { createBall, rollBall, tickBall } from './ball.js';
-import { createPlayer, groundAction, isRunning, startAction, tickPlayer } from './player.js';
+import { approachZero, createPlayer, groundAction, isRunning, startAction, tickPlayer } from './player.js';
 
 // Player-ball interaction on the ball-practice screen, measured from the recording.
 const DRIBBLE_OFFSET = 12;
@@ -15,9 +15,20 @@ const HIT_DZ_MAX = 22;
 const SHOT_SPEED = 8;
 const SHOT_HANG_TICKS = 13;
 const TRAP_DX = 16;
-const TRAP_MAX_Z = 24;
+const TRAP_MAX_Z = 32; // before it moves; trapped up to 31.4 px recorded
 const TRAP_PULL = 0.5;
-const TRAP_FOOT_Z = 15;
+const TRAP_BRAKE = 1;
+const TRAP_CARRY_DX = 9;
+// Juggling it on the run: reach (before either moves), the knock up, the lead it keeps.
+const JUGGLE_MAX_Z = 30;
+const JUGGLE_DX = 8;
+const JUGGLE_VZ = 3;
+const JUGGLE_LEAD = 0.1875;
+const JUGGLE_POSE_TICKS = 3;
+const JUGGLE_CARRY_DX = 16;
+// The next knock up no sooner than this (recorded twice exactly so).
+const JUGGLE_EVERY_TICKS = 15;
+const TRAP_FOOT_Z = 16;
 const FALL_CAPTURE_VZ = 2;
 // Ground volleys: met at ~27 px or lower a chip, at ~31 px a much higher lob. Threshold guessed.
 const VOLLEY_HIGH_Z = 29;
@@ -341,6 +352,46 @@ function headBall(s, playerZ) {
   return true;
 }
 
+// Running under a ball coming down, the player knocks it up again off the thigh (or low, the foot)
+// and runs on with it in the air: while he runs it goes along at his speed and a little more
+// (tools/simulate.py and the juggle recording). Returns whether it took the ball this tick.
+function juggle(s, { playerX, playerVx, ballX, ballZ, ballVz, wasRunning }) {
+  const { player: p, ball: b } = s;
+  const running = p.mode === 'run' && !p.action;
+  const along = () => p.vx + JUGGLE_LEAD * Math.sign(p.vx);
+  if (s.juggleWait > 0) s.juggleWait -= 1;
+  if (running && wasRunning && !s.juggleWait && ballVz < 0 && ballZ >= 1 && ballZ <= JUGGLE_MAX_Z
+    && Math.abs(ballX - playerX) <= JUGGLE_DX) {
+    s.carried = true;
+    s.juggleWait = JUGGLE_EVERY_TICKS;
+    // He keeps the speed he had for this tick and the next two (a boost ends there).
+    p.vx = playerVx;
+    p.x = playerX + p.vx;
+    p.boost = 0;
+    p.sprinting = false;
+    p.juggleTicks = JUGGLE_POSE_TICKS;
+    p.tapTick = -Infinity; // taps before it do not make a double tap with ones after
+    p.juggleLow = ballZ < TRAP_FOOT_Z;
+    b.vx = along();
+    b.x = ballX + b.vx;
+    b.z = ballZ + JUGGLE_VZ;
+    b.vz = JUGGLE_VZ - GRAVITY;
+    b.grounded = false;
+    s.sounds.push('kick');
+    return true;
+  }
+  if (!s.carried) return false;
+  // Off the run it flies on by itself (still counted as carried until it lands or is trapped).
+  if (b.grounded || Math.abs(b.x - p.x) > JUGGLE_CARRY_DX) s.carried = false;
+  if (!running || !s.carried) return false;
+  for (let i = 0; i < s.ballSteps; i++) if (tickBall(b)) s.sounds.push('bounce');
+  s.ballSteps = 1;
+  const vx = along();
+  b.x += vx - b.vx;
+  b.vx = vx;
+  return true;
+}
+
 // Advances one logic tick. s.sounds lists the sound effects of the tick ('kick', 'shot', 'bounce',
 // 'jump', 'land', 'pickup').
 export function tickPractice(s, input) {
@@ -366,6 +417,12 @@ function step(s, input) {
   const ballX = b.x;
   const playerX = p.x;
   const playerZ = p.z;
+  const playerVx = p.vx;
+  const wasRunning = p.mode === 'run';
+  const ballZ = b.z;
+  const ballVz = b.vz;
+  const ballVx = b.vx;
+  const ballGrounded = b.grounded;
   const wasOnBall = p.onBall;
   p.ballHigh = Math.max(0, b.z + b.vz) >= VOLLEY_SHOT_MIN_Z;
   const events = tickPlayer(p, input);
@@ -398,14 +455,17 @@ function step(s, input) {
     // Landing with the ball keeps it closer, until the last tick of the landing.
     const landing = p.mode === 'land' && p.landTicks > 1;
     const offset = landing ? LAND_DRIBBLE_OFFSET : DRIBBLE_OFFSET + (isRunning(p) ? (p.tick >> 1) & 3 : 0);
-    const x = Math.floor(p.x) + offset * sign(p);
+    // The ball keeps its own fractions of a pixel (lying, a fraction up from the ground).
+    const x = Math.floor(p.x) + offset * sign(p) + (b.x - Math.floor(b.x));
+    const z = p.z === 0 && b.z < 1 ? b.z : p.z;
     rollBall(b, p.vx);
-    Object.assign(b, { x, z: p.z, vx: p.vx, vy: 0, vz: 0, hang: 0, grounded: p.z === 0 });
+    Object.assign(b, { x, z, vx: p.vx, vy: 0, vz: 0, hang: 0, grounded: p.z === 0 });
     p.trapping = false;
     return;
   }
 
   if (headBall(s, playerZ)) return;
+  if (juggle(s, { playerX, playerVx, ballX, ballZ, ballVz, wasRunning })) return;
   for (let i = 0; i < s.ballSteps; i++) if (tickBall(b)) s.sounds.push('bounce');
   // A lifted ball is let drop to the ground before it can be trapped.
   if (s.lifted && b.grounded) s.lifted = false;
@@ -413,8 +473,9 @@ function step(s, input) {
 
   // A kick goes through with it rather than stopping the ball.
   const kicking = (p.action?.strike || p.action?.hits) && !p.action.struck;
-  // A ball coming down fast to the ground bounces first, unless it is being trapped.
-  const reached = (Math.abs(b.z - p.z) <= CAPTURE_DZ && !(b.z < 1 && b.vz < -FALL_CAPTURE_VZ && !p.trapping))
+  // A ball coming down fast to the ground bounces first; a trapped one is taken as it would.
+  const reached = (p.trapping ? ballGrounded && ballVz < 0
+    : Math.abs(b.z - p.z) <= CAPTURE_DZ && !(b.z < 1 && b.vz < -FALL_CAPTURE_VZ))
     || (p.mode === 'air' && p.vz > 0 && b.z < 1 && p.z - b.z <= AIR_CAPTURE_DZ);
   const caught = catchable && p.mode === 'air' && !p.action;
   if (s.noCapture === 0 && caught) {
@@ -431,29 +492,56 @@ function step(s, input) {
       Object.assign(b, { x: b.x + p.vx - AIR_CAPTURE_LAG * sign(p), z: p.z, vx: p.vx, vz: p.vz });
     }
     p.hasBall = true;
-    if (p.trapping) p.settleTicks = 2;
-    else if (p.mode !== 'air') {
-      // Taken on the ground: at the feet at once.
+    if (p.trapping) {
+      // Still in the trap on this tick; one more to stand (and turn) before he moves on.
+      p.settleTicks = 1;
+      p.trapCaught = true;
+    }
+    if (p.mode !== 'air') {
+      // Taken on the ground: at the feet at once, keeping its fractions of a pixel.
       const landing = p.mode === 'land' && p.landTicks > 1;
       const offset = landing ? LAND_DRIBBLE_OFFSET : DRIBBLE_OFFSET;
-      Object.assign(b, { x: Math.floor(p.x) + offset * sign(p) + (b.x - Math.floor(b.x)), vx: p.vx, vy: 0, vz: 0 });
+      const z = ballZ < 1 ? ballZ : b.z < 1 ? b.z : 0;
+      Object.assign(b, { x: Math.floor(p.x) + offset * sign(p) + (b.x - Math.floor(b.x)), z, vx: p.vx, vy: 0, vz: 0 });
     }
     p.trapping = false;
     return;
   }
 
   const dx = b.x - p.x;
-  const onFoot = p.mode === 'walk' && p.z === 0 && !p.action && !p.pending;
+  const onFoot = p.mode === 'walk' && !wasRunning && p.z === 0 && !p.action && !p.pending;
   const wasTrapping = p.trapping;
-  p.trapping = onFoot && !input.a && !s.lifted && b.z >= 1 && b.z <= TRAP_MAX_Z && Math.abs(dx) <= TRAP_DX
-    && (wasTrapping || b.vz < 0 || b.z < TRAP_FOOT_Z);
+  // A ball he lifted himself is let drop while he stands still.
+  const standing = playerVx === 0;
+  // Judged before either moved this tick (once trapping, as it is now).
+  const tz = wasTrapping ? b.z : ballZ;
+  const tdx = wasTrapping ? dx : ballX - playerX;
+  p.trapping = onFoot && !input.a && !(s.lifted && standing && !wasTrapping) && (wasTrapping || tz >= 1) && tz <= TRAP_MAX_Z
+    && Math.abs(tdx) <= TRAP_DX && (wasTrapping || ballVz < 0 || tz < TRAP_FOOT_Z);
   if (p.trapping && !wasTrapping) {
-    // Low it is stopped with the foot, higher with the thigh.
-    p.trapLow = b.z < TRAP_FOOT_Z;
-    // Cushioned: the ball stops in the air for a moment, then drops towards the feet.
-    b.vx = 0;
-    b.vz = TRAP_PULL;
+    // Low it is stopped with the foot, higher with the thigh. Taken before either moves this tick:
+    // the player turns to the ball and brakes, the ball stops falling and rises a little, then is
+    // carried along the way he was going (or towards him from standing).
+    p.trapLow = tz < TRAP_FOOT_Z;
+    p.facing = tdx < 0 ? 'left' : 'right';
+    const push = p.x - playerX - p.vx; // off a wall
+    p.vx = approachZero(playerVx, TRAP_BRAKE);
+    p.x = playerX + p.vx + push;
+    // A ball coming in from the side is pulled in to him instead.
+    s.trapCarry = ballVx === 0 || s.carried;
+    s.carried = false;
+    s.trapDir = Math.sign(playerVx) || -Math.sign(tdx);
+    b.vx = s.trapCarry ? p.vx + TRAP_PULL * s.trapDir : 0;
+    b.x = ballX + b.vx;
+    b.z = ballZ + TRAP_PULL;
+    b.vz = 0;
   } else if (p.trapping) {
-    b.vx = -TRAP_PULL * Math.sign(dx);
+    // The new speed already moves it this tick; he keeps facing the ball.
+    // Carried along while he still moves or it is near; out past his reach it just drops.
+    const far = s.trapCarry && p.vx === 0 && Math.abs(dx) > TRAP_CARRY_DX;
+    const vx = far ? 0 : s.trapCarry ? p.vx + TRAP_PULL * s.trapDir : -TRAP_PULL * Math.sign(dx);
+    if (s.trapCarry) b.x += vx - b.vx;
+    b.vx = vx;
+    if (Math.abs(b.x - p.x) > 1) p.facing = b.x < p.x ? 'left' : 'right';
   }
 }

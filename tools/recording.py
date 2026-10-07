@@ -176,7 +176,7 @@ GAMEPLAY_POSES = 21  # the reference recording's later poses only appear in the 
 
 # Recordings in the order they were made: poses first seen in a later one get later ids, so
 # adding a recording never renumbers the poses in js/art/sprites.js. Unlisted dumps go last.
-RECORDING_ORDER = ["ball-practice", "shots-passes", "no-ball", "shot-close", "run-shot", "on-ball", "jump-ball", "specials", "feint"]
+RECORDING_ORDER = ["ball-practice", "shots-passes", "no-ball", "shot-close", "run-shot", "on-ball", "jump-ball", "specials", "feint", "juggle"]
 
 
 def recordings():
