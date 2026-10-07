@@ -72,6 +72,7 @@ const FLICK_VZ = 9;
 // turning, for the bicycle kick). One recording of each; whether vx depends on the speed is not known.
 const TOSS_VX = { volleyOwnBall: 0x166 / 256, bicycleOwnBall: 2.5 };
 const TOSS_VZ = 6.5;
+const TOSS_TURNED_VX = 0.5;
 const MOUNT_MAX_VX = 2;
 // A with the ball and Up or Down held passes into the depth of the pitch (tools/simulate.py, the
 // ball-*-a and lob-* plans). Up, alone or with Left, aims at a point at the far side (a team-mate
@@ -104,7 +105,7 @@ const BACK_DIVE_DZ_MAX = 18;
 const OVERHEAD_AHEAD = 13;
 const OVERHEAD_DZ_MAX = 11.25;
 const OVERHEAD_BEHIND = 14;
-const OVERHEAD_BEHIND_DZ_MAX = 8;
+const OVERHEAD_BEHIND_DZ_MAX = 10.5;
 const OVERHEAD_NEAR = 11;
 const OVERHEAD_NEAR_BEHIND = 8;
 const OVERHEAD_FAR_DZ_MAX = 10.5;
@@ -121,7 +122,11 @@ const HEAD_ROLL_VX = 0.125;
 const HEAD_ROLL_PER_PX = 0.11;
 const HEAD_ROLL_VZ = -0.375;
 // Bicycle kick: hit 22.3 px up, missed 23.5 px up.
-const BICYCLE_DZ_MAX = 23;
+const BICYCLE_DZ_MAX = 22.5;
+const BICYCLE_DX_MIN = 8;
+// Volley in the air (airshots recording): hit 12 px behind and 28 px up, not 32.6 px up.
+const AIR_VOLLEY_DX = 13;
+const AIR_VOLLEY_DZ_MAX = 30;
 
 export function createPractice(playerX, ballX) {
   return { player: createPlayer(playerX), ball: createBall(ballX), noCapture: 0, ballSteps: 1, rideFrac: 0, sounds: [] };
@@ -160,7 +165,13 @@ function inKickReach(p, b) {
     }
     return -ahead <= OVERHEAD_BEHIND && dz <= (-ahead <= OVERHEAD_NEAR_BEHIND ? OVERHEAD_DZ_MAX : OVERHEAD_BEHIND_DZ_MAX);
   }
-  if (p.action?.name === 'bicycle') return Math.abs(b.x - p.x) <= HIT_DX && dz >= HIT_DZ_MIN && dz <= BICYCLE_DZ_MAX;
+  if (p.action?.name === 'bicycle') {
+    // A ball some way off to either side, not one right above him.
+    const dx = Math.abs(b.x - p.x);
+    return dx >= BICYCLE_DX_MIN && dx <= HIT_DX && dz >= HIT_DZ_MIN && dz <= BICYCLE_DZ_MAX;
+  }
+  // The volley in the air reaches high, and behind him too.
+  if (p.action?.name === 'volleyShotAir') return Math.abs(b.x - p.x) <= AIR_VOLLEY_DX && dz >= HIT_DZ_MIN && dz <= AIR_VOLLEY_DZ_MAX;
   return inReach(p, b);
 }
 
@@ -280,7 +291,8 @@ function applyEvent(s, event) {
     b.vz = 3.5;
   } else if (event === 'toss' && p.hasBall) {
     release(s);
-    b.vx = TOSS_VX[p.action.name] * sign(p);
+    // Having turned round for the volley he tosses it up nearly straight.
+    b.vx = (p.action.turned ? TOSS_TURNED_VX : TOSS_VX[p.action.name]) * sign(p);
     b.vz = TOSS_VZ;
   } else if (event === 'pass' && p.hasBall) {
     release(s);

@@ -172,6 +172,22 @@ const RECORDINGS = {
         to: 2640, poses: true, player: { facing: 'right', hasBall: true } },
     ],
   },
+  // Kicks in the air all go towards the goal on the right, whichever way the player faced.
+  airshots: {
+    scenarios: [
+      { name: 'facing left, jump under the lifted ball, B: turns, overhead kick to the right', from: 141, to: 230,
+        poses: true, player: { facing: 'left' }, practice: { lifted: true } },
+      { name: 'facing left, jump, B + right: volley to the right', from: 501, to: 600,
+        poses: true, player: { facing: 'left' }, practice: { lifted: true } },
+      { name: 'facing left, jump, B + left: bicycle kick to the right', from: 978, to: 1080,
+        poses: true, player: { facing: 'left' }, practice: { lifted: true } },
+      { name: 'facing left at the right wall, jump, B + left: bicycle kick to the right', from: 1320, to: 1420,
+        poses: true, player: { facing: 'left' }, practice: { lifted: true } },
+      { name: 'running left with the ball, jump with it, B + right: volley it to the right', from: 1824, to: 1900,
+        poses: true, player: { mode: 'run', runDir: -1, vx: -3.5, runTicks: 10, hasBall: true, facing: 'left',
+          animation: 'run', animFacing: 'left' } },
+    ],
+  },
 };
 
 // Ground movement only (walk, run, skid; the run boost is a known approximation): per tick,

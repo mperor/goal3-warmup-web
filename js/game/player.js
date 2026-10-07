@@ -21,6 +21,8 @@ const WALL_RIGHT = 224;
 const VERTICAL_FACTOR = 0.7071;
 
 const JUMP_SPEED = 4;
+// Kicks in the air go towards the goal, on the right.
+const GOAL_DIR = 1;
 const GRAVITY = 0.5;
 const AIR_CONTROL = 3 / 64;
 // Steering with a diagonal (a direction with Up or Down) is weaker.
@@ -86,7 +88,7 @@ const ACTIONS = {
   jumpKick: { steps: [[POSE.air, 3], [POSE.jumpKick, 8]], events: { 3: 'jumpKick' } },
   volley: { steps: [[POSE.air, 2], [POSE.windUp, 7], [POSE.volley, 4]], events: { 8: 'chip' } },
   // B with the facing direction in the air: the same volley, hit as a shot.
-  volleyShotAir: { steps: [[POSE.air, 2], [POSE.windUp, 7], [POSE.volley, 4]], events: { 8: 'hit' } },
+  volleyShotAir: { steps: [[POSE.air, 2], [POSE.windUp, 7], [POSE.volley, 4]], events: {}, hits: { event: 'hit', from: 1, to: 8 } },
   // The same with the player's own ball: tossed up high first. No steering on the toss tick.
   volleyOwnBall: { steps: [[POSE.air, 5], [POSE.windUp, 4], [POSE.volley, 3]], steerFrom: 1, events: { 0: 'toss', 8: 'hit' } },
   // On the ground, A or B alone once the A+B window has passed.
@@ -111,7 +113,7 @@ const ACTIONS = {
   bicycle: {
     // Turned towards the kick, then back the way the player faced before it.
     steps: [[POSE.air, 3], [POSE.windUp, 4], [POSE.flip1, 1], [POSE.flip2, 2], [POSE.flip3, 2], [POSE.flip4, 1], [POSE.air, 3]],
-    events: {}, hits: { event: 'hitBehind', from: 7, to: 8 },
+    events: {}, hits: { event: 'hitBehind', from: 5, to: 8 },
   },
   // A boost by Up or Down with the ball: a feint into the depth of the pitch, a stop, then a dash
   // back out (on this screen only the sideways part shows). `speeds` are px/tick along the run,
@@ -266,28 +268,32 @@ function airTick(p, dir, aEdge, bEdge, events) {
     if (aEdge) {
       p.vx /= 2;
       startAction(p, p.hasBall ? 'jumpKick' : 'volley');
-    } else if (dir !== 0 && dir === facingSign(p) && !p.hasBall) {
-      // Keeps its drift, unlike the other kicks in the air.
-      startAction(p, 'volleyShotAir');
-    } else if (dir !== 0 && dir === facingSign(p)) {
-      p.vx /= 2;
-      startAction(p, 'volleyOwnBall');
-    } else if (dir === -facingSign(p)) {
-      const facing = p.facing;
-      p.vx = 0;
-      p.facing = dir < 0 ? 'left' : 'right';
-      startAction(p, p.hasBall ? 'bicycleOwnBall' : 'bicycle');
-      p.action.turnBack = facing;
-    } else if (p.hasBall) {
-      p.vx /= 2;
-      // Every recorded overhead with the player's own ball faced right (towards goal?).
-      const turned = p.facing !== 'right';
-      p.facing = 'right';
-      startAction(p, 'overheadOwnBall');
-      p.action.turned = turned;
     } else {
-      p.vx /= 2;
-      startAction(p, 'overhead');
+      // B in the air always shoots towards the goal on the right (the airshots recording):
+      // towards it a volley, away from it a bicycle kick over his head, else an overhead kick.
+      const facing = p.facing;
+      if (dir === GOAL_DIR) {
+        p.facing = 'right';
+        if (!p.hasBall) {
+          // Keeps its drift, unlike the other kicks in the air.
+          startAction(p, 'volleyShotAir');
+        } else {
+          p.vx /= 2;
+          startAction(p, 'volleyOwnBall');
+          p.action.turned = facing !== 'right';
+        }
+      } else if (dir === -GOAL_DIR) {
+        p.vx = 0;
+        p.facing = 'left';
+        startAction(p, p.hasBall ? 'bicycleOwnBall' : 'bicycle');
+        // He comes out of it facing the goal.
+        p.action.turnBack = 'right';
+      } else {
+        p.vx /= 2;
+        p.facing = 'right';
+        startAction(p, p.hasBall ? 'overheadOwnBall' : 'overhead');
+        p.action.turned = facing !== 'right';
+      }
     }
   }
   const steers = !p.action || (!p.action.name.startsWith('bicycle') && p.action.t >= (p.action.steerFrom ?? 0));
