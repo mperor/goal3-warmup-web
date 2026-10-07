@@ -53,6 +53,24 @@ const FLICK_VZ = 9;
 const TOSS_VX = { volleyOwnBall: 0x166 / 256, bicycleOwnBall: 2.5 };
 const TOSS_VZ = 6.5;
 const MOUNT_MAX_VX = 2;
+// A with the ball and Up or Down held passes into the depth of the pitch (tools/simulate.py, the
+// ball-*-a and lob-* plans). Up, alone or with Left, aims at a point at the far side (a team-mate
+// off screen, it seems) when it lies about within 45° of that way: a lob at 6 px/tick, never
+// flatter than 45°, high enough to fly as many ticks as it takes to get there, off the foot a tick
+// later. Otherwise the pass goes low at 45°, ahead and into the depth. The target is fitted to 12
+// passes: directions within 10/256 px/tick (the original's are an approximation), heights within
+// 1/4 (10 of 12 exact).
+const PASS_TARGET = { x: 2.4, depth: 160, reach: 172 };
+const AIMED_PASS_SPEED = 6;
+const GRAVITY = 0.5;
+const DIAGONAL_PASS = { v: 0x2cc / 256, vz: 5.75 };
+// B with the ball and Up or Down: the shot curves into the depth, 0.5 px/tick more on each of its
+// first ticks (vy before the first; measured once each way, the ball-*-b plans).
+const SHOT_CURVE = {
+  up: { vx: 8, vy: 0, step: -0.5, ticks: 7 },
+  down: { vx: 0x7f8 / 256, vy: 0x78 / 256, step: 0.5, ticks: 8 },
+  downAhead: { vx: 8, vy: 0, step: 0.5, ticks: 8 },
+};
 // A dive hits the ball like a shot from the ground; reach from three hits and their near misses
 // (missed 20.6 px away and 10.2 px below the player).
 const DIVE_DX = 17;
@@ -76,9 +94,12 @@ export function createPractice(playerX, ballX) {
 
 const sign = (p) => (p.facing === 'left' ? -1 : 1);
 
+// Every kick sets the ball's speed into the depth afresh (none unless it says so).
 function release(s) {
   s.player.hasBall = false;
   s.noCapture = NO_CAPTURE_TICKS;
+  s.ball.vy = 0;
+  s.ball.curve = null;
 }
 
 function inReach(p, b) {
@@ -144,6 +165,8 @@ function startKick(s, button) {
   const { player: p, ball: b } = s;
   let name;
   const high = Math.max(0, b.z + b.vz) >= VOLLEY_SHOT_MIN_Z;
+  // B on the ground kicks towards the goal on the right, whichever way the player faced.
+  if (button === 'b') p.facing = 'right';
   if (p.hasBall) name = button === 'a' ? 'pass' : 'shot';
   // A without the ball and nothing high to volley swings the pass kick at the air.
   else if (button === 'a') name = high ? 'groundVolley' : 'pass';
@@ -212,12 +235,35 @@ function applyEvent(s, event) {
     b.vz = TOSS_VZ;
   } else if (event === 'pass' && p.hasBall) {
     release(s);
-    b.vx = CHIP_VX * sign(p);
-    b.vz = PASS_VZ;
+    const v = p.kickVertical;
+    const dx = PASS_TARGET.x - b.x;
+    const aimed = v === 'up' && (p.kickDir === 0 ? Math.abs(dx) <= PASS_TARGET.reach : p.kickDir < 0 && dx <= 0);
+    if (aimed) {
+      // Never flatter than 45°.
+      const ax = Math.max(-PASS_TARGET.depth, Math.min(PASS_TARGET.depth, dx));
+      const d = Math.hypot(ax, PASS_TARGET.depth);
+      b.vx = (AIMED_PASS_SPEED * ax) / d;
+      b.vy = (-AIMED_PASS_SPEED * PASS_TARGET.depth) / d;
+      b.vz = (Math.ceil(Math.hypot(dx, PASS_TARGET.depth) / AIMED_PASS_SPEED) * GRAVITY) / 2;
+      s.ballSteps = 0;
+    } else if (v) {
+      b.vx = DIAGONAL_PASS.v * sign(p);
+      b.vy = DIAGONAL_PASS.v * (v === 'up' ? -1 : 1);
+      b.vz = DIAGONAL_PASS.vz;
+    } else {
+      b.vx = CHIP_VX * sign(p);
+      b.vz = PASS_VZ;
+    }
     b.hang = 0;
     s.sounds.push('kick');
   } else if (event === 'shot' && p.hasBall) {
     groundShot(s);
+    const curve = p.kickVertical && SHOT_CURVE[p.kickVertical === 'up' ? 'up' : p.kickDir > 0 ? 'downAhead' : 'down'];
+    if (curve) {
+      b.vx = curve.vx;
+      b.vy = curve.vy;
+      b.curve = { step: curve.step, ticks: curve.ticks };
+    }
   } else if (event.startsWith('strike:') && !p.hasBall) {
     const [, kind, t] = event.split(':');
     strike(s, kind, Number(t));
@@ -268,7 +314,7 @@ function step(s, input) {
     } else {
       // Jumping off: the ball still rolls under the feet this tick, then goes on by itself.
       rollBall(b, p.vx);
-      Object.assign(b, { x: Math.floor(p.x) + s.rideFrac, z: 0, vx: p.vx, vz: 0, hang: 0 });
+      Object.assign(b, { x: Math.floor(p.x) + s.rideFrac, z: 0, vx: p.vx, vy: 0, vz: 0, hang: 0, grounded: true });
       return;
     }
   }
@@ -280,7 +326,7 @@ function step(s, input) {
   if (p.onBall) {
     // Rolling under the rider's feet; the ball keeps its own sub-pixel position.
     rollBall(b, p.vx);
-    Object.assign(b, { x: Math.floor(p.x) + s.rideFrac, z: 0, vx: p.vx, vz: 0, hang: 0 });
+    Object.assign(b, { x: Math.floor(p.x) + s.rideFrac, z: 0, vx: p.vx, vy: 0, vz: 0, hang: 0, grounded: true });
     return;
   }
 
@@ -290,7 +336,7 @@ function step(s, input) {
     const offset = landing ? LAND_DRIBBLE_OFFSET : DRIBBLE_OFFSET + (isRunning(p) ? (p.tick >> 1) & 3 : 0);
     const x = Math.floor(p.x) + offset * sign(p);
     rollBall(b, p.vx);
-    Object.assign(b, { x, z: p.z, vx: p.vx, vz: 0, hang: 0 });
+    Object.assign(b, { x, z: p.z, vx: p.vx, vy: 0, vz: 0, hang: 0, grounded: p.z === 0 });
     p.trapping = false;
     return;
   }
@@ -323,7 +369,7 @@ function step(s, input) {
   const dx = b.x - p.x;
   const onFoot = p.mode === 'walk' && p.z === 0 && !p.action && !p.pending;
   const wasTrapping = p.trapping;
-  p.trapping = onFoot && !input.a && b.z > 0 && b.z <= TRAP_MAX_Z && Math.abs(dx) <= TRAP_DX
+  p.trapping = onFoot && !input.a && b.z >= 1 && b.z <= TRAP_MAX_Z && Math.abs(dx) <= TRAP_DX
     && (wasTrapping || b.vz < 0);
   if (p.trapping && !wasTrapping) {
     // Cushioned: the ball stops in the air for a moment, then drops towards the feet.

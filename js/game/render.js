@@ -57,7 +57,7 @@ export function createRenderer(canvas) {
       ctx.drawImage(pose[facing], Math.floor(x) + dx, toCanvasY(oamY - Math.floor(z)));
     },
     ball(x, z, frame) {
-      if (z > 0) ctx.drawImage(shadow, Math.floor(x) - 4, toCanvasY(SHADOW.ballY));
+      if (Math.floor(z) > 0) ctx.drawImage(shadow, Math.floor(x) - 4, toCanvasY(SHADOW.ballY));
       ctx.drawImage(ballFrames[frame], Math.floor(x) - 8, toCanvasY(149 - Math.floor(z)));
     },
   };

@@ -13,6 +13,10 @@ from pathlib import Path
 from recording import (BALL, BALL_PALETTE, DEFAULT_SCREEN, GAMEPLAY_POSES, PLAYER, PLAYER_PALETTE, ROOT,
                        SHADOW_TILE, SPRITE_LAG, Screen, recordings)
 
+# Player and ball x on the first tick of the screen (the recordings all start later on).
+START_PLAYER_X = 121
+START_BALL_X = 133
+
 # NES palette entries used by the sprites, in the colours of docs/reference/nsl-jp.gif.
 GIF_COLOURS = {0x0F: "#000000", 0x30: "#fffeff", 0x26: "#fe8170"}
 
@@ -116,9 +120,10 @@ export const BALL_FRAMES = [
 // One tile under an airborne object at [int(X) - 4, OAM y]: 156 for the player, 157 for the ball.
 export const SHADOW = {{ tile: 0x{SHADOW_TILE:02x}, playerY: 156, ballY: 157 }};
 
+// As the screen opens: the ball at the player's feet (tools/simulate.py, the idle plan).
 export const START = {{
-  playerX: {rec.x(0, PLAYER)},
-  ballX: {rec.x(0, BALL)},
+  playerX: {START_PLAYER_X},
+  ballX: {START_BALL_X},
 }};
 """
     args.out.write_text(js, encoding="utf-8", newline="\n")
