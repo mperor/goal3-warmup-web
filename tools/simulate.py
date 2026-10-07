@@ -84,6 +84,21 @@ PLANS = {
     "run-long": (420, [(5, 80, "L"), (90, 93, "R"), *double_tap(110, "R")]),
     "feint-u-noball": (300, [*tap(10, "A", 2), (60, 70, "L"), *double_tap(100, "U"), (110, 130, "U"),
                              *tap(134, "U"), (134, 250, "U")]),
+    "pass-rest": (700, [*tap(10, "A", 2)]),
+    # Reach sweeps around the ball lying still at x 199.28 after the pass (from frame ~270): jumping
+    # onto it from a walk (Right held) and from standing, after walking for n frames.
+    **{f"mount-walk-{n}": (500, [*tap(10, "A", 2), (300, 300 + n + 60, "R"), *tap(300 + n, "AB", 2)])
+       for n in range(24, 121, 3)},
+    # Kicks in the air at a ball dropping straight down (lifted at x 133): after walking right w
+    # frames (ball from 12 px ahead to behind), a jump at frame j, B 6 frames later.
+    **{f"airhit-{w}-{j}": (200, [*tap(31, "AB", 2), *([(50, 50 + w, "R")] if w else []),
+                                 *tap(j, "AB", 2), *tap(j + 6, "B", 2)])
+       for w in (0, 3, 6, 9, 12, 15, 18, 21) for j in range(82, 125, 4)},
+    # Jumping from a walk towards the lying ball, frame by frame: taken up on the way up or not.
+    **{f"take-{n}": (440, [*tap(10, "A", 2), (300, 300 + n + 60, "R"), *tap(300 + n, "AB", 2)])
+       for n in range(56, 82)},
+    **{f"mount-stand-{n}":(500, [*tap(10, "A", 2), (300, 300 + n, "R"), *tap(300 + n + 30, "AB", 2)])
+       for n in range(60, 121, 3)},
     # A lift (A+B with the ball), then B, A or A+B some ticks later: when it is taken.
     **{f"lift-{k.lower()}-{n}": (180, [*tap(31, "AB", 2), *tap(31 + 3 * n, k, 2)])
        for k in ("B", "A", "AB") for n in (1, 2, 3, 4, 5, 6)},

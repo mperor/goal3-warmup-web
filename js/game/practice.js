@@ -6,6 +6,8 @@ const DRIBBLE_OFFSET = 12;
 const LAND_DRIBBLE_OFFSET = 8;
 const CAPTURE_DX = 12;
 const CAPTURE_DZ = 1.5;
+// Measured with tools/simulate.py (mount-* plans): taken 14.3 px away, not 15.7.
+const GROUND_CAPTURE_DX = 14.5;
 const NO_CAPTURE_TICKS = 10;
 const HIT_DX = 16;
 const HIT_DZ_MIN = -6;
@@ -37,8 +39,9 @@ const STRIKES = {
 const GROUND_SHOT_Z = 8;
 // Kicked up from under the player's feet when he flicks it off a ride.
 const RIDE_RELEASE_Z = 7;
-// A player rising in a jump takes a ball lying under him (recorded at 15 px up).
-const AIR_CAPTURE_DZ = 16;
+// A player rising in a jump takes a ball lying under him, up to 15 px up (at 16.5 he does not;
+// tools/simulate.py, the take-* plans).
+const AIR_CAPTURE_DZ = 15;
 const AIR_CAPTURE_LAG = 0.5;
 // A ball in flight caught by a player in the air: caught up to 13.2 px ahead and 14.0 px below,
 // missed at 15.5 px ahead and 14.1 px below.
@@ -87,6 +90,21 @@ const OVERHEAD_AHEAD = 13;
 const OVERHEAD_DZ_MAX = 11.25;
 const OVERHEAD_BEHIND = 14;
 const OVERHEAD_BEHIND_DZ_MAX = 8;
+const OVERHEAD_NEAR = 11;
+const OVERHEAD_NEAR_BEHIND = 8;
+const OVERHEAD_FAR_DZ_MAX = 10.5;
+const OVERHEAD_AHEAD_EARLY = 10;
+const OVERHEAD_T4_DZ_MAX = 7.5;
+const OVERHEAD_LOW_FROM = 11;
+const OVERHEAD_LOW_DZ_MIN = -12;
+// Bouncing off the head: the top of it, how far to the side it reaches, and the roll off it.
+const HEAD_Z = 24;
+const HEAD_DX = 12.5;
+const HEAD_FAR = 12;
+const HEAD_DRIFT = 0.5;
+const HEAD_ROLL_VX = 0.125;
+const HEAD_ROLL_PER_PX = 0.11;
+const HEAD_ROLL_VZ = -0.375;
 // Bicycle kick: hit 22.3 px up, missed 23.5 px up.
 const BICYCLE_DZ_MAX = 23;
 
@@ -114,10 +132,18 @@ function inReach(p, b) {
 function inKickReach(p, b) {
   const dz = b.z - p.z;
   if (p.action?.name === 'overhead') {
+    // The reach follows the leg (tools/simulate.py, the airhit-* plans): on its first ticks shorter
+    // ahead and on tick 4 lower; right overhead and just behind as high as ahead; late in the kick
+    // it gets a ball well below him too.
+    const t = p.hitTick;
     const ahead = (b.x - p.x) * sign(p);
-    if (dz < HIT_DZ_MIN) return false;
-    return ahead >= 0 ? ahead <= OVERHEAD_AHEAD && dz <= OVERHEAD_DZ_MAX
-      : -ahead <= OVERHEAD_BEHIND && dz <= OVERHEAD_BEHIND_DZ_MAX;
+    if (dz < (t >= OVERHEAD_LOW_FROM ? OVERHEAD_LOW_DZ_MIN : HIT_DZ_MIN)) return false;
+    if (t === 4 && dz > OVERHEAD_T4_DZ_MAX) return false;
+    if (ahead >= 0) {
+      return ahead <= (t <= 4 ? OVERHEAD_AHEAD_EARLY : OVERHEAD_AHEAD)
+        && dz <= (ahead > OVERHEAD_NEAR ? OVERHEAD_FAR_DZ_MAX : OVERHEAD_DZ_MAX);
+    }
+    return -ahead <= OVERHEAD_BEHIND && dz <= (-ahead <= OVERHEAD_NEAR_BEHIND ? OVERHEAD_DZ_MAX : OVERHEAD_BEHIND_DZ_MAX);
   }
   if (p.action?.name === 'bicycle') return Math.abs(b.x - p.x) <= HIT_DX && dz >= HIT_DZ_MIN && dz <= BICYCLE_DZ_MAX;
   return inReach(p, b);
@@ -285,6 +311,36 @@ function applyEvent(s, event) {
   }
 }
 
+// A ball dropping onto the head of a player going up in a jump rides on it, a little to one side,
+// until he kicks or stops rising; then it rolls off ahead, the faster the further back it sat
+// (tools/simulate.py, the airhit-* plans). Returns whether it took the ball this tick.
+function headBall(s, playerZ) {
+  const { player: p, ball: b } = s;
+  const ride = s.headRide;
+  if (ride && (p.mode !== 'air' || p.action || p.vz <= 0)) {
+    s.headRide = null;
+    b.vx = (HEAD_ROLL_VX + (HEAD_FAR - ride.ahead) * HEAD_ROLL_PER_PX) * sign(p);
+    b.vz = HEAD_ROLL_VZ;
+    return false;
+  }
+  if (ride) {
+    b.x += b.vx;
+    b.z = p.z + ride.dz;
+    b.vz = p.vz;
+    return true;
+  }
+  const dz = b.z - playerZ;
+  const ahead = (b.x - p.x) * sign(p);
+  if (p.mode !== 'air' || p.action || p.vz <= 0 || b.vz >= 0 || Math.abs(ahead) > HEAD_DX
+    || dz < HEAD_Z || b.z + b.vz - p.z >= HEAD_Z) return false;
+  s.headRide = { dz, ahead };
+  b.vx = (ahead > HEAD_FAR - 3 ? -HEAD_DRIFT : HEAD_DRIFT) * sign(p);
+  b.x += b.vx;
+  b.z = p.z + dz;
+  b.vz = p.vz;
+  return true;
+}
+
 // Advances one logic tick. s.sounds lists the sound effects of the tick ('kick', 'shot', 'bounce',
 // 'jump', 'land', 'pickup').
 export function tickPractice(s, input) {
@@ -308,6 +364,8 @@ function step(s, input) {
   const catchable = p.mode === 'air' && !p.action && b.z >= 1 && ahead >= 0 && ahead <= AIR_CATCH_DX
     && b.z - p.z >= AIR_CATCH_DZ_MIN && b.z - p.z <= CAPTURE_DZ;
   const ballX = b.x;
+  const playerX = p.x;
+  const playerZ = p.z;
   const wasOnBall = p.onBall;
   p.ballHigh = Math.max(0, b.z + b.vz) >= VOLLEY_SHOT_MIN_Z;
   const events = tickPlayer(p, input);
@@ -347,6 +405,7 @@ function step(s, input) {
     return;
   }
 
+  if (headBall(s, playerZ)) return;
   for (let i = 0; i < s.ballSteps; i++) if (tickBall(b)) s.sounds.push('bounce');
   // A lifted ball is let drop to the ground before it can be trapped.
   if (s.lifted && b.grounded) s.lifted = false;
@@ -364,13 +423,21 @@ function step(s, input) {
     p.hasBall = true;
     return;
   }
-  if (s.noCapture === 0 && !kicking && Math.abs(b.x - p.x) <= CAPTURE_DX && reached) {
+  // On the ground the reach is judged from where the player was before he moved.
+  const near = p.mode === 'air' ? Math.abs(b.x - p.x) <= CAPTURE_DX : Math.abs(b.x - playerX) <= GROUND_CAPTURE_DX;
+  if (s.noCapture === 0 && !kicking && near && reached) {
     if (p.mode === 'air' && b.z < 1) {
       // Taken up from the ground: on this tick it goes with the player, a little behind.
       Object.assign(b, { x: b.x + p.vx - AIR_CAPTURE_LAG * sign(p), z: p.z, vx: p.vx, vz: p.vz });
     }
     p.hasBall = true;
     if (p.trapping) p.settleTicks = 2;
+    else if (p.mode !== 'air') {
+      // Taken on the ground: at the feet at once.
+      const landing = p.mode === 'land' && p.landTicks > 1;
+      const offset = landing ? LAND_DRIBBLE_OFFSET : DRIBBLE_OFFSET;
+      Object.assign(b, { x: Math.floor(p.x) + offset * sign(p) + (b.x - Math.floor(b.x)), vx: p.vx, vy: 0, vz: 0 });
+    }
     p.trapping = false;
     return;
   }

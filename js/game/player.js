@@ -40,7 +40,8 @@ const CRAWL_PUSH_TICKS = 3;
 const CRAWL_SPEED = 4;
 // Riding the ball: dropping onto a ball lying still lands on it (crouched at MOUNT_Z), then the
 // player stands on top at RIDE_Z and the ball rolls under him; runs are a little slower there.
-const MOUNT_DX = 6;
+// Measured with tools/simulate.py (the mount-* plans): 14.8 px away landed on it, 15.6 px missed.
+const MOUNT_DX = 15;
 const MOUNT_Z = 9;
 const RIDE_Z = 13;
 const RIDE_RUN_SPEED = 3.25;
@@ -214,7 +215,10 @@ function runAction(p, events) {
   if (a.events[a.t]) events.push(a.events[a.t]);
   if (a.strike && a.t > 0 && !a.struck) events.push(`strike:${a.strike}:${a.t}`);
   const h = a.hits;
-  if (h && !a.struck && a.t >= h.from && a.t <= h.to && !h.skip?.includes(a.t)) events.push(h.event);
+  if (h && !a.struck && a.t >= h.from && a.t <= h.to && !h.skip?.includes(a.t)) {
+    p.hitTick = a.t;
+    events.push(h.event);
+  }
   a.t += 1;
   if (a.t >= a.steps.reduce((n, [, ticks]) => n + ticks, 0)) {
     if (a.turnBack) p.facing = a.turnBack;
@@ -287,10 +291,9 @@ function airTick(p, dir, aEdge, bEdge, events) {
   if (p.action?.decel) p.vx = approachZero(p.vx, p.action.decel);
   else if (dir !== 0 && steers) p.vx += dir * (p.vertical ? AIR_CONTROL_DIAGONAL : AIR_CONTROL);
 
-  // Dropping past the top of a ball lying close below: land on it.
+  // Coming down onto a ball lying below, from its height down: he lands on it (it rolls under him).
   const top = p.ballBelow;
-  if (top !== null && !p.action && p.vz < 0 && p.z >= RIDE_Z && p.z + p.vz < RIDE_Z
-    && Math.abs(top - p.x) <= MOUNT_DX) {
+  if (top !== null && !p.action && p.vz < 0 && p.z > 0 && p.z <= RIDE_Z && Math.abs(top - p.x) <= MOUNT_DX) {
     mount(p);
     return;
   }
@@ -530,11 +533,12 @@ export function tickPlayer(p, input) {
   }
 
   if (p.rising) {
-    // Standing up on the ball takes the tick, unless a run was queued while landing: a direction
-    // pressed then neither moves him nor counts as a tap.
+    // Standing up on the ball takes the tick, unless a run was queued while landing; a direction
+    // held up to it walks him on (a direction pressed then neither moves him nor counts as a tap).
     p.rising = false;
     p.z = RIDE_Z;
-    if (!p.runQueued) return events;
+    if (!p.runQueued && lastDir === 0) return events;
+    if (!p.runQueued && dir === 0) p.queuedDir = lastDir;
   }
   if (p.runQueued && p.mode === 'walk') {
     startRun(p, p.runQueued);
@@ -571,7 +575,8 @@ export function tickPlayer(p, input) {
     groundAction(p, events);
     return events;
   }
-  if (abPressed && p.hasBall && p.mode === 'run' && dir === p.runDir) {
+  // With the ball and the way he faces held (walking or running), A+B skids and flicks it up.
+  if (abPressed && p.hasBall && dir !== 0 && dir === facingSign(p) && !p.vertical) {
     p.mode = 'walk';
     startAction(p, 'flick');
     groundAction(p, events);
@@ -580,7 +585,7 @@ export function tickPlayer(p, input) {
   if (abPressed) {
     if (p.mode === 'run' && wasSprinting && p.runDir < 0 && (dir < 0 || lastDir < 0)) p.vx = BOOST_JUMP_LEFT_SPEED;
     jump(p);
-    airTick(p, 0, false, false, events);
+    airTick(p, dir, false, false, events);
     return events;
   }
 
@@ -610,7 +615,7 @@ function startKick(p, events) {
   if (p.pending === 'ab') {
     p.pending = null;
     jump(p);
-    airTick(p, 0, false, false, events);
+    airTick(p, p.prevDir, false, false, events);
     return events;
   }
   // Only the way he already faced when pressing B, and not at a ball high enough to volley.
