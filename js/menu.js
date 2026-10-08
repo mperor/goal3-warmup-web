@@ -1,7 +1,7 @@
 // One window around the game: how to play, the options and where the game and its makers live
-// on. It is open first (closing it lets the sound start) and again with Esc, a click on the scene,
-// the START button on the screen or a gamepad's START. While it is open the game holds still and
-// the sound is paused.
+// on. It is open first (closing it lets the sound start) and again with Esc, a mouse click on the
+// scene, the START button on the screen or a gamepad's START. While it is open the game holds
+// still and the sound is paused.
 export function setupMenu({ menu, close, sound }) {
   let started = false;
 
@@ -24,8 +24,14 @@ export function setupMenu({ menu, close, sound }) {
     sound.start();
   }, true);
 
-  // A click on the scene opens it; a click on the backdrop (outside the box) closes it.
-  document.querySelector('.scene').addEventListener('click', open);
+  // A mouse click on the scene opens it (a touch does not: a thumb slips onto the scene easily, the
+  // START button is there for it); a click on the backdrop (outside the box) closes it.
+  const scene = document.querySelector('.scene');
+  let pointerType = 'mouse';
+  scene.addEventListener('pointerdown', (event) => (pointerType = event.pointerType));
+  scene.addEventListener('click', () => {
+    if (pointerType === 'mouse') open();
+  });
   menu.addEventListener('click', (event) => {
     if (event.target === menu) menu.close();
   });

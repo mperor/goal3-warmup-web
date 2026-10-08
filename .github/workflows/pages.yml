@@ -27,7 +27,7 @@ jobs:
       - name: Collect the site
         run: |
           mkdir _site
-          cp -r index.html favicon.png favicon.svg preview.png css js fonts _site/
+          cp -r index.html favicon.png favicon.svg preview.png manifest.webmanifest icons css js fonts _site/
           rm _site/js/package.json
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5

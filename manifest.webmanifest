@@ -1,0 +1,15 @@
+{
+  "name": "Goal 3 Warm-up",
+  "short_name": "Goal 3",
+  "description": "The ball-practice warm-up screen of Kunio-kun no Nekketsu Soccer League (Famicom, 1993), playable in the browser.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#155fd9",
+  "theme_color": "#155fd9",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

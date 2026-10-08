@@ -39,8 +39,11 @@ and open the address it prints. Every push to `master` publishes the page on Git
 
 A gamepad works too: the d-pad or the left stick, A on the right face button, B on the bottom one,
 START for the menu window (a browser may still want a key press, click or touch before it plays
-sound). On a touch screen the page shows a d-pad, B, A, A+B and START; phones
-are best held sideways, and where the browser allows it the menu has a full screen switch.
+sound). On a touch screen the page shows a d-pad, B, A, A+B and START (only START opens the menu
+there, so a stray touch on the scene does not), with a short buzz on A and B where the phone can
+(a switch in the menu). Phones are best held sideways; where the browser allows it the menu has a
+full screen switch, and added to the home screen the page opens full screen and sideways
+(`manifest.webmanifest`; on an iPhone the only way to lose the browser's bars).
 
 ## Layout
 
@@ -75,7 +78,7 @@ original cartridge** at `rom/nsl-jp.nes` (git-ignored; no ROM is part of this re
 | `tools/export_trace.py`      | exports frame dumps in `tools/data/` as JSON for `tools/check_replay.mjs`   |
 | `tools/check_replay.mjs`     | replays recorded play sessions through the game logic and compares with RAM  |
 | `tools/gen_sprites.py`       | builds `js/art/sprites.js` from the frame dumps and a PPU snapshot           |
-| `tools/gen_favicon.mjs`      | draws the favicon from the ball sprite                                       |
+| `tools/gen_favicon.mjs`      | draws the favicon and the home screen icons (`icons/`) from the ball sprite  |
 | `tools/record_gif.mjs`       | records a GIF of the screen from the game logic on a scripted input plan; with `--preview`, `preview.png` |
 
 The play-session recordings in `tools/data/` are local and not committed; record your own with
@@ -95,6 +98,7 @@ The following is derived from the original game and is **not** covered by this p
 - `js/audio/sound-data.js`: the music and sound effects, as sound chip register writes
 - `docs/reference/`: screenshots of the original and an input recording for it
 - `preview.png`, the picture shown with links to the page: drawn with the sprites and art above
+- `favicon.svg`, `favicon.png` and `icons/`: drawn from the ball sprite
 - the title text and the copyright line of the original's title screen in `index.html`
 
 If you hold rights to this material and want it removed, please open an issue.
