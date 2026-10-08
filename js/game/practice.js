@@ -132,8 +132,23 @@ const BICYCLE_DX_MIN = 8;
 const AIR_VOLLEY_DX = 13;
 const AIR_VOLLEY_DZ_MAX = 30;
 
+// Every field from the start, as for the player.
 export function createPractice(playerX, ballX) {
-  return { player: createPlayer(playerX), ball: createBall(ballX), noCapture: 0, ballSteps: 1, rideFrac: 0, sounds: [] };
+  return {
+    player: createPlayer(playerX),
+    ball: createBall(ballX),
+    sounds: [], // the sound effects of the last tick
+    noCapture: 0, // ticks after a kick before the ball can be taken again
+    ballSteps: 1, // moves of the ball this tick (0 or 2 where the original holds it back a tick)
+    rideFrac: 0, // the ball's fraction of a pixel while he rides it
+    lifted: false, // lifted by him: let drop before it can be trapped
+    flickFromRide: false,
+    headRide: null, // { dz, ahead } while it rides on his head
+    carried: false, // knocked up on the run and carried along
+    juggleWait: 0,
+    trapCarry: false,
+    trapDir: 0,
+  };
 }
 
 const sign = (p) => (p.facing === 'left' ? -1 : 1);
@@ -159,7 +174,7 @@ function inKickReach(p, b) {
     // The reach follows the leg (tools/simulate.py, the airhit-* plans): on its first ticks shorter
     // ahead and on tick 4 lower; right overhead and just behind as high as ahead; late in the kick
     // it gets a ball well below him too.
-    const t = p.hitTick;
+    const t = p.action.hitTick;
     const ahead = (b.x - p.x) * sign(p);
     if (dz < (t >= OVERHEAD_LOW_FROM ? OVERHEAD_LOW_DZ_MIN : HIT_DZ_MIN)) return false;
     if (t === 4 && dz > OVERHEAD_T4_DZ_MAX) return false;
@@ -219,7 +234,7 @@ function groundShot(s) {
 }
 
 // A or B alone on the ground: pass or shoot with the ball, otherwise get ready to kick it.
-function startKick(s, button) {
+function chooseKick(s, button) {
   const { player: p, ball: b } = s;
   let name;
   const high = Math.max(0, b.z + b.vz) >= VOLLEY_SHOT_MIN_Z;
@@ -303,9 +318,9 @@ function applyEvent(s, event) {
     b.vz = TOSS_VZ;
   } else if (event === 'pass' && p.hasBall) {
     release(s);
-    const v = p.kickVertical;
+    const v = p.kick.vertical;
     const dx = PASS_TARGET.x - b.x;
-    const aimed = v === 'up' && (p.kickDir === 0 ? Math.abs(dx) <= PASS_TARGET.reach : p.kickDir < 0 && dx <= 0);
+    const aimed = v === 'up' && (p.kick.dir === 0 ? Math.abs(dx) <= PASS_TARGET.reach : p.kick.dir < 0 && dx <= 0);
     if (aimed) {
       // Never flatter than 45°.
       const ax = Math.max(-PASS_TARGET.depth, Math.min(PASS_TARGET.depth, dx));
@@ -334,7 +349,7 @@ function applyEvent(s, event) {
     s.sounds.push('kick');
   } else if (event === 'shot' && p.hasBall) {
     groundShot(s);
-    const curve = p.kickVertical && SHOT_CURVE[p.kickVertical === 'up' ? 'up' : p.kickDir > 0 ? 'downAhead' : 'down'];
+    const curve = p.kick.vertical && SHOT_CURVE[p.kick.vertical === 'up' ? 'up' : p.kick.dir > 0 ? 'downAhead' : 'down'];
     if (curve) {
       b.vx = curve.vx;
       b.vy = curve.vy;
@@ -401,10 +416,10 @@ function juggle(s, { playerX, playerVx, ballX, ballZ, ballVz, wasRunning }) {
     // He keeps the speed he had for this tick and the next two (a boost ends there).
     p.vx = playerVx;
     p.x = playerX + p.vx;
-    p.boost = 0;
-    p.sprinting = false;
+    p.run.boost = 0;
+    p.run.sprinting = false;
     p.juggleTicks = JUGGLE_POSE_TICKS;
-    p.tapTick = -Infinity; // taps before it do not make a double tap with ones after
+    p.input.tapTick = null; // taps before it do not make a double tap with ones after
     p.juggleLow = ballZ < TRAP_FOOT_Z;
     b.vx = along();
     b.x = ballX + b.vx;
@@ -430,11 +445,11 @@ function juggle(s, { playerX, playerVx, ballX, ballZ, ballVz, wasRunning }) {
 // 'jump', 'land', 'pickup').
 export function tickPractice(s, input) {
   const p = s.player;
-  const before = { mode: p.mode, landed: p.landed, hasBall: p.hasBall };
+  const before = { mode: p.mode, landed: p.dive.landed, hasBall: p.hasBall };
   s.sounds = [];
   step(s, input);
   if (p.mode === 'air' && before.mode !== 'air' && p.vz > 0) s.sounds.push('jump');
-  if ((before.mode === 'air' && p.mode === 'land') || (p.mode === 'dive' && p.landed && !before.landed)) s.sounds.push('land');
+  if ((before.mode === 'air' && p.mode === 'land') || (p.mode === 'dive' && p.dive.landed && !before.landed)) s.sounds.push('land');
   if (p.hasBall && !before.hasBall) s.sounds.push('pickup');
 }
 
@@ -475,7 +490,7 @@ function step(s, input) {
   }
   if (s.noCapture > 0) s.noCapture -= 1;
   const kick = events.find((e) => e === 'kickA' || e === 'kickB');
-  if (kick) startKick(s, kick === 'kickA' ? 'a' : 'b');
+  if (kick) chooseKick(s, kick === 'kickA' ? 'a' : 'b');
   events.forEach((e) => applyEvent(s, e));
 
   if (p.onBall) {
@@ -487,7 +502,7 @@ function step(s, input) {
 
   if (p.hasBall) {
     // Landing with the ball keeps it closer, until the last tick of the landing.
-    const landing = p.mode === 'land' && p.landTicks > 1;
+    const landing = p.mode === 'land' && p.land.ticks > 1;
     const offset = landing ? LAND_DRIBBLE_OFFSET : DRIBBLE_OFFSET + (isRunning(p) ? (p.tick >> 1) & 3 : 0);
     // The ball keeps its own fractions of a pixel (lying, a fraction up from the ground).
     const x = Math.floor(p.x) + offset * sign(p) + (b.x - Math.floor(b.x));
@@ -533,7 +548,7 @@ function step(s, input) {
     }
     if (p.mode !== 'air') {
       // Taken on the ground: at the feet at once, keeping its fractions of a pixel.
-      const landing = p.mode === 'land' && p.landTicks > 1;
+      const landing = p.mode === 'land' && p.land.ticks > 1;
       const offset = landing ? LAND_DRIBBLE_OFFSET : DRIBBLE_OFFSET;
       const z = ballZ < 1 ? ballZ : b.z < 1 ? b.z : 0;
       Object.assign(b, { x: Math.floor(p.x) + offset * sign(p) + (b.x - Math.floor(b.x)), z, vx: p.vx, vy: 0, vz: 0 });
@@ -543,7 +558,7 @@ function step(s, input) {
   }
 
   const dx = b.x - p.x;
-  const onFoot = p.mode === 'walk' && !wasRunning && p.z === 0 && !p.action && !p.pending;
+  const onFoot = p.mode === 'walk' && !wasRunning && p.z === 0 && !p.action && !p.press.button;
   const wasTrapping = p.trapping;
   // A ball he lifted himself is let drop while he stands still.
   const standing = playerVx === 0;
