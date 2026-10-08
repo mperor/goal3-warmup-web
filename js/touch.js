@@ -2,7 +2,9 @@
 // and START. A finger that starts on the d-pad steers it until lifted, even off it; one that starts
 // on the buttons presses whichever it is over, so it can slide from B onto A.
 const DPAD_DEAD = 0.35; // of the d-pad's half width: around the middle nothing is pressed
-const BUZZ_MS = 12;
+// Long enough for the motors of most Android phones to start (12 ms was not felt on some).
+const BUZZ_MS = 35;
+const CONFIRM_MS = 80; // when the switch is turned on
 const BUZZ_BUTTONS = ['a', 'b', 'ab'];
 const VIBRATION_KEY = 'goal3-warmup:vibration';
 
@@ -34,7 +36,7 @@ export function setupTouch(root, { input, onStart, vibrate = () => false }) {
     const held = new Set();
     for (const { pressed } of pointers.values()) pressed.forEach((button) => held.add(button));
     input.setTouch(held);
-    if (vibrate() && BUZZ_BUTTONS.some((b) => held.has(b) && !last.has(b))) navigator.vibrate(BUZZ_MS);
+    if (vibrate() && BUZZ_BUTTONS.some((b) => held.has(b) && !last.has(b))) buzz(BUZZ_MS);
     last = held;
     buttons.forEach((el) => el.classList.toggle('is-pressed', held.has(el.dataset.button)));
     dpad.dataset.pressed = [...held].filter((b) => ['left', 'right', 'up', 'down'].includes(b)).join(' ');
@@ -75,6 +77,15 @@ export function setupTouch(root, { input, onStart, vibrate = () => false }) {
   }, { capture: true, passive: true });
 }
 
+// The browser refuses (returns false) before the first tap on the page, or where the phone has
+// vibration turned off; said once in the console.
+let refusedSaid = false;
+function buzz(ms) {
+  if (navigator.vibrate(ms) || refusedSaid) return;
+  refusedSaid = true;
+  console.warn('The browser did not vibrate (no tap on the page yet, or vibration off on the phone).');
+}
+
 // The vibration switch in the window, where the device can vibrate (not iPhones) and has a touch
 // screen; on by default, remembered. Returns whether it is on.
 export function setupVibration(toggle) {
@@ -105,6 +116,8 @@ export function setupVibration(toggle) {
       // Not remembered then.
     }
     show();
+    // Turned on, it buzzes once: whether the phone vibrates at all shows at once.
+    if (on) buzz(CONFIRM_MS);
   });
   return () => on && available();
 }
