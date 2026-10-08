@@ -21,7 +21,37 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Goal 3">
+  <!-- Until js/main.js has drawn the scene only the blue screen shows (css/style.css); if it never
+       does, the text stands in after a while. -->
+  <script>
+    document.documentElement.classList.add('booting');
+    setTimeout(() => document.documentElement.classList.remove('booting'), 6000);
+  </script>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="preload" href="fonts/DotGothic16-subset.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/PressStart2P-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <!-- Every module js/main.js imports, fetched at once (tools/check_preload.mjs) -->
+  <link rel="modulepreload" href="js/art/press-start.js">
+  <link rel="modulepreload" href="js/art/sprites.js">
+  <link rel="modulepreload" href="js/art/title-logo.js">
+  <link rel="modulepreload" href="js/audio/apu.js">
+  <link rel="modulepreload" href="js/audio/sequencer.js">
+  <link rel="modulepreload" href="js/audio/sound-data.js">
+  <link rel="modulepreload" href="js/audio/sound.js">
+  <link rel="modulepreload" href="js/game/ball.js">
+  <link rel="modulepreload" href="js/game/game.js">
+  <link rel="modulepreload" href="js/game/input.js">
+  <link rel="modulepreload" href="js/game/loop.js">
+  <link rel="modulepreload" href="js/game/player.js">
+  <link rel="modulepreload" href="js/game/practice.js">
+  <link rel="modulepreload" href="js/game/render.js">
+  <link rel="modulepreload" href="js/main.js">
+  <link rel="modulepreload" href="js/menu.js">
+  <link rel="modulepreload" href="js/pixel-art.js">
+  <link rel="modulepreload" href="js/pixel-font.js">
+  <link rel="modulepreload" href="js/scale.js">
+  <link rel="modulepreload" href="js/touch.js">
+  <!-- end of modulepreload -->
 </head>
 <body>
   <div class="scene">

@@ -41,3 +41,9 @@ const vibrate = setupVibration(document.getElementById('vibration-toggle'));
 setupTouch(document.querySelector('.touch-pad'), { input, onStart: menu.open, vibrate });
 setupFullscreen([...document.querySelectorAll('[data-fullscreen]')], document.querySelector('[data-home-screen]'));
 startGame(document.getElementById('game'), { input, sound, paused: menu.paused });
+
+// Drawn: the scene comes in (css/style.css), unless the time index.html gives it ran out first.
+// Only once: later the window opens at once, as the game's menus do.
+if (document.documentElement.classList.replace('booting', 'booted')) {
+  setTimeout(() => document.documentElement.classList.remove('booted'), 500);
+}
