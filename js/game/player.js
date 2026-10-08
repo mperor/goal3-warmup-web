@@ -129,6 +129,8 @@ const ACTIONS = {
   },
 };
 
+// Every field the player has, from the start (nothing is added later): the state can be shown,
+// saved as JSON and compared whole.
 export function createPlayer(x) {
   return {
     x,
@@ -136,55 +138,61 @@ export function createPlayer(x) {
     vx: 0,
     vz: 0,
     facing: 'right',
-    mode: 'walk',
-    runDir: 0,
-    boost: 0,
-    boostRest: 0,
-    boostQueued: false,
-    boostKey: null,
-    afterSkid: false,
-    runQueued: 0,
-    coast: 0,
-    runTicks: 0,
-    prevDir: 0,
-    prevA: false,
-    prevB: false,
-    abTick: -Infinity,
-    pending: null,
-    pendingDir: 0,
-    queuedDir: 0,
-    pendingVertical: null,
-    kickDir: 0,
-    kickVertical: null,
-    prevVertical: false,
-    vertical: false,
-    verticalTap: false,
-    sprinting: false,
-    landed: false,
-    fromDive: false,
-    crawlTicks: 0,
-    crawlDir: 0,
-    pushTicks: 0,
-    onBall: false,
-    rising: false,
-    ballBelow: null,
-    tapDir: 0,
-    tapKey: null,
-    tapTick: -Infinity,
-    skidPause: false,
-    skidHold: 0,
-    landTicks: 0,
-    airActionUsed: false,
-    settleTicks: 0,
-    action: null,
-    hasBall: false,
-    trapping: false,
+    mode: 'walk', // walk, run, skid, air, land, dive
     tick: 0,
-    animation: 'stand',
-    animFacing: 'right',
-    animFrame: 0,
+    action: null, // a scripted move (ACTIONS) under way: { name, t, ... }
+    // The buttons: edges, double taps, what is held.
+    input: {
+      prevDir: 0,
+      prevA: false,
+      prevB: false,
+      prevVertical: false,
+      vertical: false, // Up or Down held
+      verticalTap: false, // Up or Down pressed alone, standing in for the facing direction
+      stepped: false, // moved this tick by a direction held at the end of an action
+      queuedDir: 0,
+      tapDir: 0, // the last press of a direction, for double taps: which way, which key, when
+      tapKey: null,
+      tapTick: null,
+      abTick: null, // when A or B was last pressed after neither was held
+    },
+    // A or B alone waiting out the A+B window before it acts.
+    press: { button: null, dir: 0, facing: 0, vertical: null, queued: false, released: false },
+    // The kick the window let go: the direction and Up or Down held with it.
+    kick: { dir: 0, vertical: null },
+    run: {
+      dir: 0,
+      ticks: 0,
+      coast: 0, // ticks without the direction held
+      boost: 0, // ticks of a boost left
+      boostRest: 0,
+      boostQueued: false,
+      boostKey: null,
+      sprinting: false,
+      queued: 0, // a double tap while landing: the run starts once up
+    },
+    skid: { pause: false, hold: 0, after: false },
+    air: { actionUsed: false },
+    land: { ticks: 0, touchdown: false },
+    dive: { landed: false, fromDive: false, crawlTicks: 0, crawlDir: 0, pushTicks: 0 },
+    // With the ball (set by js/game/practice.js, which moves it).
+    hasBall: false,
+    ballHigh: false, // high enough to volley
+    ballBelow: null, // x of a ball lying below, to land on
+    onBall: false, // standing on it
+    rising: false, // getting up onto it
+    trapping: false,
+    trapCaught: false,
+    trapLow: false, // with the foot rather than the thigh
+    settleTicks: 0,
+    juggleTicks: 0,
+    juggleLow: false,
+    anim: { name: 'stand', facing: 'right', frame: 0 },
   };
 }
+
+// Ticks since a recorded tick (null: never).
+const since = (p, tick) => (tick === null ? Infinity : p.tick - tick);
 
 const facingSign = (p) => (p.facing === 'left' ? -1 : 1);
 
@@ -211,7 +219,7 @@ export function approachZero(v, step) {
 }
 
 export function startAction(p, name) {
-  p.action = { ...ACTIONS[name], name, t: 0 };
+  p.action = { ...ACTIONS[name], name, t: 0, struck: false, turned: false, turnBack: null, hitTick: null };
 }
 
 function runAction(p, events) {
@@ -221,14 +229,14 @@ function runAction(p, events) {
   if (a.strike && a.t > 0 && !a.struck) events.push(`strike:${a.strike}:${a.t}`);
   const h = a.hits;
   if (h && !a.struck && a.t >= h.from && a.t <= h.to && !h.skip?.includes(a.t)) {
-    p.hitTick = a.t;
+    a.hitTick = a.t;
     events.push(h.event);
   }
   a.t += 1;
   if (a.t >= a.steps.reduce((n, [, ticks]) => n + ticks, 0)) {
     if (a.turnBack) p.facing = a.turnBack;
     // On the ground the player already turns the way a direction is held on the last tick.
-    if (p.mode !== 'air' && p.prevDir !== 0) p.facing = p.prevDir < 0 ? 'left' : 'right';
+    if (p.mode !== 'air' && p.input.prevDir !== 0) p.facing = p.input.prevDir < 0 ? 'left' : 'right';
     p.action = null;
   }
 }
@@ -246,7 +254,7 @@ export function groundAction(p, events) {
   const { speeds } = p.action;
   if (speeds) {
     const speed = speeds[p.action.t];
-    p.vx = (speed ?? RUN_SPEED) * p.runDir * (speed !== undefined || p.vertical ? VERTICAL_FACTOR : 1);
+    p.vx = (speed ?? RUN_SPEED) * p.run.dir * (speed !== undefined || p.input.vertical ? VERTICAL_FACTOR : 1);
     moveX(p);
   } else if (p.action.decel) {
     p.vx = approachZero(p.vx, p.action.decel);
@@ -258,12 +266,12 @@ export function groundAction(p, events) {
 function jump(p) {
   p.mode = 'air';
   p.vz = JUMP_SPEED;
-  p.airActionUsed = false;
+  p.air.actionUsed = false;
 }
 
 function airTick(p, dir, aEdge, bEdge, events) {
-  if (!p.airActionUsed && (aEdge || bEdge)) {
-    p.airActionUsed = true;
+  if (!p.air.actionUsed && (aEdge || bEdge)) {
+    p.air.actionUsed = true;
     p.vz = JUMP_SPEED;
     if (aEdge) {
       p.vx /= 2;
@@ -299,7 +307,7 @@ function airTick(p, dir, aEdge, bEdge, events) {
   }
   const steers = !p.action || (!p.action.name.startsWith('bicycle') && p.action.t >= (p.action.steerFrom ?? 0));
   if (p.action?.decel) p.vx = approachZero(p.vx, p.action.decel);
-  else if (dir !== 0 && steers) p.vx += dir * (p.vertical ? AIR_CONTROL_DIAGONAL : AIR_CONTROL);
+  else if (dir !== 0 && steers) p.vx += dir * (p.input.vertical ? AIR_CONTROL_DIAGONAL : AIR_CONTROL);
 
   // Coming down onto a ball lying below, from its height down: he lands on it (it rolls under him).
   const top = p.ballBelow;
@@ -316,8 +324,8 @@ function airTick(p, dir, aEdge, bEdge, events) {
     p.z = 0;
     p.vz = 0;
     p.mode = 'land';
-    p.landTicks = LAND_TICKS + 1;
-    p.touchdown = true;
+    p.land.ticks = LAND_TICKS + 1;
+    p.land.touchdown = true;
     if (p.action?.turnBack) p.facing = p.action.turnBack;
     p.action = null;
   }
@@ -330,35 +338,35 @@ function mount(p) {
   p.vx = approachZero(p.vx, LAND_DECEL);
   moveX(p);
   p.mode = 'land';
-  p.landTicks = LAND_TICKS;
+  p.land.ticks = LAND_TICKS;
 }
 
 function startRun(p, dir) {
   p.mode = 'run';
-  p.runDir = dir;
+  p.run.dir = dir;
   p.facing = dir < 0 ? 'left' : 'right';
-  p.boost = 0;
-  p.coast = 0;
-  p.runTicks = 0;
+  p.run.boost = 0;
+  p.run.coast = 0;
+  p.run.ticks = 0;
 }
 
 // Records a press of a direction key (`key`: 'up' or 'down' standing in for the facing
 // direction, null for left or right); returns whether it doubles the last press of that key.
 function tap(p, dir, key) {
-  const double = dir === p.tapDir && key === p.tapKey && p.tick - p.tapTick <= DOUBLE_TAP_TICKS;
-  p.tapDir = dir;
-  p.tapKey = key;
-  p.tapTick = p.tick;
+  const double = dir === p.input.tapDir && key === p.input.tapKey && since(p, p.input.tapTick) <= DOUBLE_TAP_TICKS;
+  p.input.tapDir = dir;
+  p.input.tapKey = key;
+  p.input.tapTick = p.tick;
   return double;
 }
 
 function groundTick(p, dir, pressed, verticalKey) {
-  p.stepped = dir === 0 && p.queuedDir !== 0;
-  if (p.stepped) dir = p.queuedDir;
-  p.queuedDir = 0;
+  p.input.stepped = dir === 0 && p.input.queuedDir !== 0;
+  if (p.input.stepped) dir = p.input.queuedDir;
+  p.input.queuedDir = 0;
   // A run at a wall ends (once the boost is over), before anything else: on that tick the player
   // slows down as from a walk, whatever is held.
-  if (p.mode === 'run' && p.boost === 0 && atWall(p)) {
+  if (p.mode === 'run' && p.run.boost === 0 && atWall(p)) {
     p.mode = 'walk';
     p.vx = approachZero(p.vx, WALK_DECEL);
     moveX(p);
@@ -370,31 +378,31 @@ function groundTick(p, dir, pressed, verticalKey) {
   if (verticalKey && !pressed && dir === 0) {
     dir = facingSign(p);
     pressed = true;
-    p.verticalTap = true;
+    p.input.verticalTap = true;
     key = verticalKey;
   }
-  if (p.boostRest > 0) p.boostRest -= 1;
-  if (p.boostQueued && p.boostRest === 0 && p.mode === 'run') {
+  if (p.run.boostRest > 0) p.run.boostRest -= 1;
+  if (p.run.boostQueued && p.run.boostRest === 0 && p.mode === 'run') {
     // A boost that had to wait starts with a tick on the spot.
-    p.boostQueued = false;
-    p.boost = BOOST_TICKS - 1;
+    p.run.boostQueued = false;
+    p.run.boost = BOOST_TICKS - 1;
     p.vx = 0;
-    p.sprinting = true;
-    p.runTicks += 1;
+    p.run.sprinting = true;
+    p.run.ticks += 1;
     return;
   }
   // A double tap starts a run, and in a run the way it goes, a boost.
   if (pressed && !(p.juggleTicks > 0) && tap(p, dir, key)) {
-    if (p.mode === 'run' && dir === p.runDir && key && p.hasBall && p.boost === 0 && p.runTicks >= BOOST_MIN_RUN_TICKS) {
+    if (p.mode === 'run' && dir === p.run.dir && key && p.hasBall && p.run.boost === 0 && p.run.ticks >= BOOST_MIN_RUN_TICKS) {
       startAction(p, 'feint');
       groundAction(p, []);
       return;
-    } else if (p.mode === 'run' && dir === p.runDir) {
+    } else if (p.mode === 'run' && dir === p.run.dir) {
       // Right after a boost the next one has to wait a tick; none while knocking the ball up.
-      if (p.boostRest > 0) p.boostQueued = true;
-      else if (p.boost === 0 && p.runTicks >= BOOST_MIN_RUN_TICKS && !(p.juggleTicks > 0)) {
-        p.boost = BOOST_TICKS;
-        p.boostKey = key;
+      if (p.run.boostRest > 0) p.run.boostQueued = true;
+      else if (p.run.boost === 0 && p.run.ticks >= BOOST_MIN_RUN_TICKS && !(p.juggleTicks > 0)) {
+        p.run.boost = BOOST_TICKS;
+        p.run.boostKey = key;
       }
     } else if (p.mode === 'walk') {
       startRun(p, dir);
@@ -403,53 +411,52 @@ function groundTick(p, dir, pressed, verticalKey) {
 
   let skidStart = false;
   if (p.mode === 'run') {
-    p.runTicks += 1;
-    if (dir === -p.runDir) {
+    p.run.ticks += 1;
+    if (dir === -p.run.dir) {
       skidStart = true;
-    } else if (p.boost > 0) {
-      // Up or Down held stops a boost from getting anywhere sideways.
+    } else if (p.run.boost > 0) {
       // With Up or Down held it goes into the depth, so nowhere sideways; started by the direction,
       // its first tick is still diagonal.
-      const diagonal = p.boostKey === null && p.boost === BOOST_TICKS;
-      p.vx = p.vertical ? (diagonal ? BOOST_SPEED * VERTICAL_FACTOR * p.runDir : 0) : BOOST_SPEED * p.runDir;
-      p.boost -= 1;
-      if (p.boost === 0) p.boostRest = 2;
-      p.sprinting = true;
+      const diagonal = p.run.boostKey === null && p.run.boost === BOOST_TICKS;
+      p.vx = p.input.vertical ? (diagonal ? BOOST_SPEED * VERTICAL_FACTOR * p.run.dir : 0) : BOOST_SPEED * p.run.dir;
+      p.run.boost -= 1;
+      if (p.run.boost === 0) p.run.boostRest = 2;
+      p.run.sprinting = true;
     } else {
-      p.vx = (p.onBall ? RIDE_RUN_SPEED : RUN_SPEED) * p.runDir * (p.vertical ? VERTICAL_FACTOR : 1);
-      p.coast = dir === p.runDir || p.vertical ? 0 : p.coast + 1;
+      p.vx = (p.onBall ? RIDE_RUN_SPEED : RUN_SPEED) * p.run.dir * (p.input.vertical ? VERTICAL_FACTOR : 1);
+      p.run.coast = dir === p.run.dir || p.input.vertical ? 0 : p.run.coast + 1;
       // Without a direction held the run ends in a skid after a while, though not with the ball.
-      if (p.coast > COAST_TICKS && !p.hasBall) skidStart = true;
+      if (p.run.coast > COAST_TICKS && !p.hasBall) skidStart = true;
     }
   }
 
   if (skidStart) {
     // The original holds still for the first tick of a skid, still in the running pose.
     p.mode = 'skid';
-    p.skidPause = true;
-    p.vx = RUN_SPEED * p.runDir;
+    p.skid.pause = true;
+    p.vx = RUN_SPEED * p.run.dir;
     return;
   }
 
   if (p.mode === 'skid') {
-    p.skidPause = false;
+    p.skid.pause = false;
     p.vx = approachZero(p.vx, RUN_DECEL);
     if (p.vx === 0) {
       p.mode = 'walk';
-      p.skidHold = 1;
-      p.afterSkid = true;
+      p.skid.hold = 1;
+      p.skid.after = true;
     }
-  } else if (p.mode === 'walk' && p.afterSkid) {
+  } else if (p.mode === 'walk' && p.skid.after) {
     // The tick after a skid the player turns where he is heading, without moving yet.
-    p.afterSkid = false;
+    p.skid.after = false;
     if (dir !== 0) p.facing = dir < 0 ? 'left' : 'right';
     p.vx = 0;
   } else if (p.mode === 'walk') {
-    if (p.verticalTap || (p.vertical && dir === 0)) {
+    if (p.input.verticalTap || (p.input.vertical && dir === 0)) {
       // Up or Down instead of a direction stops a walk at once.
       p.vx = 0;
     } else if (dir !== 0) {
-      p.vx = WALK_SPEED * dir * (p.vertical ? VERTICAL_FACTOR : 1);
+      p.vx = WALK_SPEED * dir * (p.input.vertical ? VERTICAL_FACTOR : 1);
       p.facing = dir < 0 ? 'left' : 'right';
     } else {
       p.vx = approachZero(p.vx, WALK_DECEL);
@@ -462,47 +469,47 @@ function groundTick(p, dir, pressed, verticalKey) {
 // Advances one logic tick; returns the ball events of this tick ('lift', 'hit', ...).
 export function tickPlayer(p, input) {
   const dir = input.left === input.right ? 0 : input.left ? -1 : 1;
-  const pressed = dir !== 0 && dir !== p.prevDir;
-  const lastDir = p.prevDir;
+  const pressed = dir !== 0 && dir !== p.input.prevDir;
+  const lastDir = p.input.prevDir;
   const vertical = Boolean(input.up || input.down);
-  const verticalKey = vertical && !p.prevVertical ? (input.up ? 'up' : 'down') : null;
-  p.prevVertical = vertical;
-  p.vertical = vertical;
-  p.verticalTap = false;
-  p.stepped = false;
+  const verticalKey = vertical && !p.input.prevVertical ? (input.up ? 'up' : 'down') : null;
+  p.input.prevVertical = vertical;
+  p.input.vertical = vertical;
+  p.input.verticalTap = false;
+  p.input.stepped = false;
   p.trapCaught = false;
   if (p.juggleTicks > 0) p.juggleTicks -= 1;
-  const wasSprinting = p.sprinting;
-  p.sprinting = false;
-  const aEdge = input.a && !p.prevA;
-  const bEdge = input.b && !p.prevB;
-  if ((aEdge || bEdge) && !p.prevA && !p.prevB) {
-    p.abTick = p.tick;
+  const wasSprinting = p.run.sprinting;
+  p.run.sprinting = false;
+  const aEdge = input.a && !p.input.prevA;
+  const bEdge = input.b && !p.input.prevB;
+  if ((aEdge || bEdge) && !p.input.prevA && !p.input.prevB) {
+    p.input.abTick = p.tick;
     // On the ball only A+B does something, straight away.
     const from = p.action && (aEdge && bEdge ? p.action.abFrom : p.action.inputFrom);
     if (p.mode !== 'air' && (!p.action || p.action.t >= (from ?? Infinity)) && !p.onBall) {
-      p.pending = aEdge && bEdge ? 'ab' : aEdge ? 'a' : 'b';
-      p.pendingDir = dir;
-      p.pendingFacing = facingSign(p);
+      p.press.button = aEdge && bEdge ? 'ab' : aEdge ? 'a' : 'b';
+      p.press.dir = dir;
+      p.press.facing = facingSign(p);
       // Pressed on an action's last ticks: kept until it is over, A+B then jumps straight away.
-      p.pendingQueued = Boolean(p.action);
-      p.pendingVertical = input.up ? 'up' : input.down ? 'down' : null;
+      p.press.queued = Boolean(p.action);
+      p.press.vertical = input.up ? 'up' : input.down ? 'down' : null;
     }
-  } else if ((aEdge || bEdge) && p.pending && p.pending !== 'ab' && p.tick - p.abTick <= AB_WINDOW_TICKS) {
+  } else if ((aEdge || bEdge) && p.press.button && p.press.button !== 'ab' && since(p, p.input.abTick) <= AB_WINDOW_TICKS) {
     // The other button within the window: A+B, e.g. pressed while still landing.
-    p.pending = 'ab';
+    p.press.button = 'ab';
   }
   // A or B let go before the A+B window is over: no A+B coming, the kick goes at once.
-  p.pendingReleased = (p.pending === 'a' && !input.a) || (p.pending === 'b' && !input.b);
-  p.prevDir = dir;
-  p.prevA = input.a;
-  p.prevB = input.b;
+  p.press.released = (p.press.button === 'a' && !input.a) || (p.press.button === 'b' && !input.b);
+  p.input.prevDir = dir;
+  p.input.prevA = input.a;
+  p.input.prevB = input.b;
   p.tick += 1;
-  if (p.skidHold > 0) p.skidHold -= 1;
+  if (p.skid.hold > 0) p.skid.hold -= 1;
   const events = [];
 
   if (p.mode === 'air') {
-    p.pending = null;
+    p.press.button = null;
     airTick(p, dir, aEdge, bEdge, events);
     return events;
   }
@@ -513,23 +520,23 @@ export function tickPlayer(p, input) {
   }
 
   if (p.mode === 'land') {
-    p.touchdown = false;
+    p.land.touchdown = false;
     // B while getting up from a dive dives again, a tick after the A+B window.
-    if (p.fromDive && p.pending === 'b' && p.tick - p.abTick > AB_WINDOW_TICKS + 1) {
-      p.pending = null;
+    if (p.dive.fromDive && p.press.button === 'b' && since(p, p.input.abTick) > AB_WINDOW_TICKS + 1) {
+      p.press.button = null;
       dive(p);
       diveTick(p, 0, events);
       return events;
     }
     // Taps while landing count: a double tap there starts the run once the player is up.
-    if (pressed && tap(p, dir, null)) p.runQueued = dir;
+    if (pressed && tap(p, dir, null)) p.run.queued = dir;
     p.vx = approachZero(p.vx, LAND_DECEL);
     moveX(p);
-    p.landTicks -= 1;
-    if (p.landTicks === 0) {
+    p.land.ticks -= 1;
+    if (p.land.ticks === 0) {
       p.mode = 'walk';
       if (dir !== 0) p.facing = dir < 0 ? 'left' : 'right';
-      p.fromDive = false;
+      p.dive.fromDive = false;
       p.rising = p.onBall;
     }
     return kickReady(p) ? startKick(p, events) : events;
@@ -540,7 +547,7 @@ export function tickPlayer(p, input) {
     // the player steps that way on the next one.
     if (pressed) tap(p, dir, null);
     groundAction(p, events);
-    if (!p.action && dir !== 0) p.queuedDir = dir;
+    if (!p.action && dir !== 0) p.input.queuedDir = dir;
     return events;
   }
 
@@ -549,26 +556,26 @@ export function tickPlayer(p, input) {
     // held up to it walks him on (a direction pressed then neither moves him nor counts as a tap).
     p.rising = false;
     p.z = RIDE_Z;
-    if (!p.runQueued && lastDir === 0) return events;
-    if (!p.runQueued && dir === 0) p.queuedDir = lastDir;
+    if (!p.run.queued && lastDir === 0) return events;
+    if (!p.run.queued && dir === 0) p.input.queuedDir = lastDir;
   }
-  if (p.runQueued && p.mode === 'walk') {
-    startRun(p, p.runQueued);
-    p.runQueued = 0;
+  if (p.run.queued && p.mode === 'walk') {
+    startRun(p, p.run.queued);
+    p.run.queued = 0;
   }
 
   // A+B together (pressed within a couple of ticks of each other, as on a pad).
   const ground = p.mode === 'walk' || p.mode === 'run';
   // On the ball the second button counts however long the first has been held.
   const abPressed = ground && input.a && input.b
-    && (p.tick - p.abTick <= AB_WINDOW_TICKS || (p.onBall && (aEdge || bEdge)));
-  if (abPressed) p.pending = null;
+    && (since(p, p.input.abTick) <= AB_WINDOW_TICKS || (p.onBall && (aEdge || bEdge)));
+  if (abPressed) p.press.button = null;
   if (abPressed && p.onBall && dir !== 0) {
     // With a direction: kick the ball up from under the feet and drop off it.
     p.onBall = false;
     p.mode = 'air';
     p.vz = 0;
-    p.airActionUsed = true;
+    p.air.actionUsed = true;
     startAction(p, 'flick');
     groundAction(p, events);
     return ['offBall', ...events];
@@ -582,20 +589,20 @@ export function tickPlayer(p, input) {
   }
   // Standing with the ball (or coming to a stop) A+B lifts it; with a direction, Up or Down held
   // the player jumps with it.
-  if (abPressed && p.hasBall && p.mode === 'walk' && dir === 0 && !p.vertical) {
+  if (abPressed && p.hasBall && p.mode === 'walk' && dir === 0 && !p.input.vertical) {
     startAction(p, 'lift');
     groundAction(p, events);
     return events;
   }
   // With the ball and the way he faces held (walking or running), A+B skids and flicks it up.
-  if (abPressed && p.hasBall && dir !== 0 && dir === facingSign(p) && !p.vertical) {
+  if (abPressed && p.hasBall && dir !== 0 && dir === facingSign(p) && !p.input.vertical) {
     p.mode = 'walk';
     startAction(p, 'flick');
     groundAction(p, events);
     return events;
   }
   if (abPressed) {
-    if (p.mode === 'run' && wasSprinting && p.runDir < 0 && (dir < 0 || lastDir < 0)) p.vx = BOOST_JUMP_LEFT_SPEED;
+    if (p.mode === 'run' && wasSprinting && p.run.dir < 0 && (dir < 0 || lastDir < 0)) p.vx = BOOST_JUMP_LEFT_SPEED;
     jump(p);
     airTick(p, dir, false, false, events);
     return events;
@@ -617,7 +624,7 @@ export function tickPlayer(p, input) {
   if (kickReady(p)) return startKick(p, events);
   // Knocking the ball up on the run he goes on at the same speed.
   if (p.juggleTicks > 0 && p.mode === 'run') {
-    p.runTicks += 1;
+    p.run.ticks += 1;
     moveX(p);
     return events;
   }
@@ -630,17 +637,17 @@ export function tickPlayer(p, input) {
 // B with the facing direction and no ball dives; A+B that had to wait jumps; any other kick
 // is the caller's to pick.
 function startKick(p, events) {
-  if (p.pending === 'ab') {
-    p.pending = null;
+  if (p.press.button === 'ab') {
+    p.press.button = null;
     jump(p);
-    airTick(p, p.prevDir, false, false, events);
+    airTick(p, p.input.prevDir, false, false, events);
     return events;
   }
   // Only the way he already faced when pressing B, and not at a ball high enough to volley.
-  if (p.pending === 'b' && !p.hasBall && !p.ballHigh && p.pendingDir !== 0 && p.pendingDir === p.pendingFacing) {
-    p.pending = null;
+  if (p.press.button === 'b' && !p.hasBall && !p.ballHigh && p.press.dir !== 0 && p.press.dir === p.press.facing) {
+    p.press.button = null;
     dive(p);
-    diveTick(p, p.prevDir, events);
+    diveTick(p, p.input.prevDir, events);
     return events;
   }
   return [...events, kick(p)];
@@ -651,10 +658,10 @@ function dive(p, dir = facingSign(p)) {
   p.mode = 'dive';
   p.vx = DIVE_SPEED * dir;
   p.vz = DIVE_VZ;
-  p.landed = false;
-  p.fromDive = true;
-  p.crawlTicks = 0;
-  p.pushTicks = 0;
+  p.dive.landed = false;
+  p.dive.fromDive = true;
+  p.dive.crawlTicks = 0;
+  p.dive.pushTicks = 0;
 }
 
 // In the air like a jump (with the same steering), then a slide that ends in getting up.
@@ -663,15 +670,15 @@ function dive(p, dir = facingSign(p)) {
 // along on his front, either way: three ticks bracing (POSE.crawl), one more, then a push.
 // B there dives again, the way he was pushing if a direction came with it.
 function diveTick(p, dir, events) {
-  if (p.landed && p.pending === 'b' && p.tick - p.abTick > AB_WINDOW_TICKS + 1) {
-    p.pending = null;
-    dive(p, p.pendingDir || facingSign(p));
+  if (p.dive.landed && p.press.button === 'b' && since(p, p.input.abTick) > AB_WINDOW_TICKS + 1) {
+    p.press.button = null;
+    dive(p, p.press.dir || facingSign(p));
   }
-  if (p.landed && dir !== 0 && p.crawlTicks === 0 && p.pushTicks === 0 && Math.abs(p.vx) <= CRAWL_READY_SPEED) {
-    p.crawlTicks = CRAWL_BRACE_TICKS + 1;
-    p.crawlDir = dir;
+  if (p.dive.landed && dir !== 0 && p.dive.crawlTicks === 0 && p.dive.pushTicks === 0 && Math.abs(p.vx) <= CRAWL_READY_SPEED) {
+    p.dive.crawlTicks = CRAWL_BRACE_TICKS + 1;
+    p.dive.crawlDir = dir;
   }
-  if (!p.landed) {
+  if (!p.dive.landed) {
     if (dir !== 0) p.vx += dir * AIR_CONTROL;
     moveX(p);
     p.z += p.vz;
@@ -679,77 +686,77 @@ function diveTick(p, dir, events) {
     if (p.z <= 0) {
       p.z = 0;
       p.vz = 0;
-      p.landed = true;
+      p.dive.landed = true;
     }
     events.push('dive');
-  } else if (p.pushTicks > 0) {
-    p.pushTicks -= 1;
-    p.vx = CRAWL_SPEED * p.crawlDir;
+  } else if (p.dive.pushTicks > 0) {
+    p.dive.pushTicks -= 1;
+    p.vx = CRAWL_SPEED * p.dive.crawlDir;
     moveX(p);
-  } else if (p.vx !== 0 || p.crawlTicks > 0) {
+  } else if (p.vx !== 0 || p.dive.crawlTicks > 0) {
     p.vx = approachZero(p.vx, SLIDE_DECEL);
     moveX(p);
-    if (p.crawlTicks > 0) {
-      p.crawlTicks -= 1;
-      if (p.crawlTicks === 0) p.pushTicks = CRAWL_PUSH_TICKS;
+    if (p.dive.crawlTicks > 0) {
+      p.dive.crawlTicks -= 1;
+      if (p.dive.crawlTicks === 0) p.dive.pushTicks = CRAWL_PUSH_TICKS;
     }
   } else {
     p.mode = 'land';
-    p.landTicks = LAND_TICKS;
+    p.land.ticks = LAND_TICKS;
   }
 }
 
 // Kicking out of a run with the ball is not in the recordings; it goes like the others.
-const kickReady = (p) => p.pending && (p.mode === 'walk' || p.mode === 'run')
-  && (p.tick - p.abTick > AB_WINDOW_TICKS || p.pendingReleased || (p.pending === 'ab' && p.pendingQueued));
+const kickReady = (p) => p.press.button && (p.mode === 'walk' || p.mode === 'run')
+  && (since(p, p.input.abTick) > AB_WINDOW_TICKS || p.press.released || (p.press.button === 'ab' && p.press.queued));
 
 // The A+B window has passed with one button: the caller picks the action ('kickA' / 'kickB').
 // The kick faces the direction held with the button, even if a skid came in between; the
 // direction and Up or Down held with it stay in kickDir and kickVertical for the caller.
 function kick(p) {
-  const event = p.pending === 'a' ? 'kickA' : 'kickB';
-  if (p.pendingDir !== 0) p.facing = p.pendingDir < 0 ? 'left' : 'right';
-  p.kickDir = p.pendingDir;
-  p.kickVertical = p.pendingVertical;
+  const event = p.press.button === 'a' ? 'kickA' : 'kickB';
+  if (p.press.dir !== 0) p.facing = p.press.dir < 0 ? 'left' : 'right';
+  p.kick.dir = p.press.dir;
+  p.kick.vertical = p.press.vertical;
   p.mode = 'walk';
-  p.pending = null;
+  p.press.button = null;
   return event;
 }
 
 function currentAnimation(p) {
   if (p.action) return `action:${actionPose(p.action)}`;
   if (p.mode === 'air') return `action:${POSE.air}`;
-  if (p.mode === 'land') return `action:${p.touchdown ? POSE.air : POSE.land}`;
-  if (p.mode === 'dive' && p.crawlTicks > 0) return `action:${POSE.crawl}`;
-  if (p.mode === 'dive') return `action:${p.vz >= 0 && !p.landed ? POSE.dive : POSE.slide}`;
+  if (p.mode === 'land') return `action:${p.land.touchdown ? POSE.air : POSE.land}`;
+  if (p.mode === 'dive' && p.dive.crawlTicks > 0) return `action:${POSE.crawl}`;
+  if (p.mode === 'dive') return `action:${p.vz >= 0 && !p.dive.landed ? POSE.dive : POSE.slide}`;
   if (p.juggleTicks > 0) return `action:${p.juggleLow ? POSE.lift : POSE.windUp}`;
   if (p.trapping || p.trapCaught) return `action:${p.trapLow ? POSE.lift : POSE.windUp}`;
-  if (p.mode === 'skid') return p.skidPause ? p.animation : 'skid';
-  if (p.skidHold > 0) return 'skid';
+  if (p.mode === 'skid') return p.skid.pause ? p.anim.name : 'skid';
+  if (p.skid.hold > 0) return 'skid';
   // Sprint poses alternate each tick of a boost, the last tick repeating the second one.
-  if (p.mode === 'run' && p.sprinting) return `action:${p.boost > 0 && p.boost % 2 === 0 ? POSE.sprint1 : POSE.sprint2}`;
+  if (p.mode === 'run' && p.run.sprinting) return `action:${p.run.boost > 0 && p.run.boost % 2 === 0 ? POSE.sprint1 : POSE.sprint2}`;
   if (p.mode === 'run') return p.onBall ? 'ride' : 'run';
-  if (p.vertical) return p.animation === 'walk' || p.animation === 'stand' ? 'walk' : 'tread';
-  if ((p.prevDir === 0 && !p.stepped) || p.vx === 0) return 'stand';
+  if (p.input.vertical) return p.anim.name === 'walk' || p.anim.name === 'stand' ? 'walk' : 'tread';
+  if ((p.input.prevDir === 0 && !p.input.stepped) || p.vx === 0) return 'stand';
   // Walking on straight out of a run (stopped by a wall) starts half a step later, like treading.
-  return p.animation === 'run' || p.animation === 'tread' ? 'tread' : 'walk';
+  return p.anim.name === 'run' || p.anim.name === 'tread' ? 'tread' : 'walk';
 }
 
 export function framePlayer(p) {
   const animation = currentAnimation(p);
-  if (animation !== p.animation || (p.facing !== p.animFacing && animation !== 'walk')) {
-    p.animation = animation;
-    p.animFacing = p.facing;
-    p.animFrame = 0;
+  if (animation !== p.anim.name || (p.facing !== p.anim.facing && animation !== 'walk')) {
+    p.anim.name = animation;
+    p.anim.facing = p.facing;
+    p.anim.frame = 0;
   }
   if (animation.startsWith('action:')) return Number(animation.slice(7));
   const { poses, frames } = ANIMATIONS[animation];
-  const pose = poses[Math.floor(p.animFrame / frames) % poses.length];
-  p.animFrame += 1;
+  const pose = poses[Math.floor(p.anim.frame / frames) % poses.length];
+  p.anim.frame += 1;
   return pose;
 }
 
 // Running, not boosting (Up or Down held slows it down).
 export function isRunning(p) {
-  return p.mode === 'run' && !p.sprinting;
+  return p.mode === 'run' && !p.run.sprinting;
 }

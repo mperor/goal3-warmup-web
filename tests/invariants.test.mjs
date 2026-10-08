@@ -3,7 +3,8 @@
 // tools/simulate.py's random plans: walks, runs, taps of A and B, Up and Down, jumps.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BALL_FRAMES, PLAYER_POSES } from '../js/art/sprites.js';
+import { BALL_FRAMES, PLAYER_POSES, START } from '../js/art/sprites.js';
+import { createPractice } from '../js/game/practice.js';
 import { doubleTap, runPlan, tap } from './harness.mjs';
 
 const PLANS = 300;
@@ -86,4 +87,41 @@ test(`${PLANS} random plans keep the rules on every tick`, () => {
 // recorded yet; to be settled with the player-ball state machine.
 test('a trap does not go on into a jump', { todo: 'trap flag left set when jumping out of a trap' }, () => {
   assert.deepEqual(firstFailures((s) => (s.player.trapping && s.player.mode === 'air' ? ['trapping in the air'] : [])), []);
+});
+
+// Every field of the state is there from the start (createPractice, createPlayer, createBall):
+// none appears on the way, so the state can be shown and compared whole. The action under way is
+// the one part that comes and goes.
+function shape(o, path = '') {
+  return Object.entries(o).flatMap(([key, value]) => {
+    const at = path + key;
+    if (key === 'action') return [at];
+    return value && typeof value === 'object' && !Array.isArray(value) ? [at, ...shape(value, `${at}.`)] : [at];
+  });
+}
+
+// Values JSON would change or drop: undefined, NaN, Infinity (-0 becomes 0, which is the same here).
+function jsonUnsafe(o, path = '') {
+  return Object.entries(o).flatMap(([key, value]) => {
+    if (value && typeof value === 'object') return jsonUnsafe(value, `${path}${key}.`);
+    const bad = value === undefined || (typeof value === 'number' && !Number.isFinite(value));
+    return bad ? [`${path}${key} = ${value}`] : [];
+  });
+}
+
+test('the state keeps the fields it starts with, and goes through JSON unchanged', () => {
+  const start = createPractice(START.playerX, START.ballX);
+  // headRide and curve hold an object or null: only their presence is fixed.
+  const fixed = (keys) => keys.filter((k) => !/^(headRide|ball\.curve)\./.test(k)).sort();
+  const expected = fixed(shape(start));
+  assert.deepEqual(firstFailures((s) => {
+    const out = [];
+    const keys = fixed(shape(s));
+    const added = keys.filter((k) => !expected.includes(k));
+    const gone = expected.filter((k) => !keys.includes(k));
+    if (added.length || gone.length) out.push(`fields added ${added.join(',') || '-'}, gone ${gone.join(',') || '-'}`);
+    const unsafe = jsonUnsafe(s);
+    if (unsafe.length) out.push(`not for JSON: ${unsafe.join(', ')}`);
+    return out;
+  }), []);
 });

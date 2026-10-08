@@ -7,6 +7,14 @@ const TOLERANCE = 1.01;
 const BALL_TOLERANCE = 2.01; // the original keeps a resting ball at z ~0.48 and x fractions we drop
 export const SPRITE_LAG = 4;
 
+// Sets the given fields, into the groups of the state too ({ run: { dir: 1 } } keeps run's others).
+function merge(target, fields) {
+  for (const [key, value] of Object.entries(fields)) {
+    if (value && typeof value === 'object' && !Array.isArray(value) && target[key] && typeof target[key] === 'object') merge(target[key], value);
+    else target[key] = value;
+  }
+}
+
 // A scenario starts from the recorded state at `from`, set by hand where RAM alone is not enough
 // (`tapAgo`: the last press of a direction, that many ticks before).
 // With `poses`, the displayed pose and facing must match on every frame too.
@@ -15,8 +23,9 @@ export function runScenario({ ticks, frames }, sc) {
   const i0 = ticks.filter((t) => t.f <= sc.from).length - 1;
   const t0 = ticks[i0];
   const s = createPractice(t0.px, t0.bx);
-  Object.assign(s.player, { tick: t0.it, z: t0.pz, vx: t0.pvx, vz: t0.pvz }, sc.player);
-  if (sc.tapAgo !== undefined) s.player.tapTick = t0.it - sc.tapAgo;
+  merge(s.player, { tick: t0.it, z: t0.pz, vx: t0.pvx, vz: t0.pvz });
+  merge(s.player, sc.player ?? {});
+  if (sc.tapAgo !== undefined) s.player.input.tapTick = t0.it - sc.tapAgo;
   Object.assign(s.ball, { z: t0.bz < 1 ? 0 : t0.bz, vx: t0.bvx, vz: t0.bvz, hang: t0.hang });
   Object.assign(s, sc.practice);
   framePlayer(s.player);
