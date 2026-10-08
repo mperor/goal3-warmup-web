@@ -1,6 +1,6 @@
 # goal3-warmup-web
 
-![The title and warm-up screen of the original](docs/reference/img.png)
+![The warm-up screen, as the page draws it](preview.png)
 
 The ball-practice warm-up screen of *Kunio-kun no Nekketsu Soccer League* (くにおくんの熱血サッカーリーグ,
 Technōs Japan, Famicom, 1993; known as *Goal 3*), rebuilt for the web as a fan tribute. The player
