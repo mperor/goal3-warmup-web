@@ -1,0 +1,267 @@
+   0 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0 | pickup
+   3 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+   6 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+   9 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  12 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  15 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  18 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  21 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  24 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  27 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  30 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  33 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  36 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  39 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  42 R   P 123.313 0 walk r pose 1r ball | B 135 0 v 2.313 0 f0
+  45 R   P 125.625 0 walk r pose 1r ball | B 137 0 v 2.313 0 f0
+  48 R   P 127.938 0 walk r pose 0r ball | B 139 0 v 2.313 0 f4
+  51 R   P 130.250 0 walk r pose 0r ball | B 142 0 v 2.313 0 f4
+  54 R   P 132.563 0 walk r pose 2r ball | B 144 0 v 2.313 0 f4
+  57 R   P 134.875 0 walk r pose 2r ball | B 146 0 v 2.313 0 f1
+  60 R   P 137.188 0 walk r pose 0r ball | B 149 0 v 2.313 0 f1
+  63 R   P 139.500 0 walk r pose 0r ball | B 151 0 v 2.313 0 f1
+  66 R   P 141.813 0 walk r pose 1r ball | B 153 0 v 2.313 0 f5
+  69 R   P 144.125 0 walk r pose 1r ball | B 156 0 v 2.313 0 f5
+  72 -   P 145.688 0 walk r pose 0r ball | B 157 0 v 1.563 0 f5
+  75 -   P 146.500 0 walk r pose 0r ball | B 158 0 v 0.813 0 f5
+  78 -   P 146.563 0 walk r pose 0r ball | B 158 0 v 0.063 0 f5
+  81 -   P 146.563 0 walk r pose 0r ball | B 158 0 v 0 0 f5
+  84 -   P 146.563 0 walk r pose 0r ball | B 158 0 v 0 0 f5
+  87 -   P 146.563 0 walk r pose 0r ball | B 158 0 v 0 0 f5
+  90 -   P 146.563 0 walk r pose 0r ball | B 158 0 v 0 0 f5
+  93 -   P 146.563 0 walk r pose 0r ball | B 158 0 v 0 0 f5
+  96 -   P 146.563 0 walk r pose 0r ball | B 158 0 v 0 0 f5
+  99 -   P 146.563 0 walk r pose 0r ball | B 158 0 v 0 0 f5
+ 102 -   P 146.563 0 walk r pose 0r ball | B 158 0 v 0 0 f5
+ 105 -   P 146.563 0 walk r pose 0r ball | B 158 0 v 0 0 f5
+ 108 -   P 146.563 0 walk r pose 0r ball | B 158 0 v 0 0 f5
+ 111 -   P 146.563 0 walk r pose 0r ball | B 158 0 v 0 0 f5
+ 114 -   P 146.563 0 walk r pose 0r ball | B 158 0 v 0 0 f5
+ 117 -   P 146.563 0 walk r pose 0r ball | B 158 0 v 0 0 f5
+ 120 AB  P 146.563 0 walk/lift r pose 19r ball | B 158 0 v 0 0 f5
+ 123 AB  P 146.563 0 walk/lift r pose 19r | B 158 8 v 0 7.500 f5
+ 126 -   P 146.563 0 walk/lift r pose 19r | B 158 15.500 v 0 7 f5
+ 129 -   P 146.563 0 walk/lift r pose 19r | B 158 22.500 v 0 6.500 f5
+ 132 -   P 146.563 0 walk/lift r pose 19r | B 158 29 v 0 6 f5
+ 135 -   P 146.563 0 walk r pose 0r | B 158 35 v 0 5.500 f5
+ 138 -   P 146.563 0 walk r pose 0r | B 158 40.500 v 0 5 f5
+ 141 -   P 146.563 0 walk r pose 0r | B 158 45.500 v 0 4.500 f5
+ 144 -   P 146.563 0 walk r pose 0r | B 158 50 v 0 4 f5
+ 147 -   P 146.563 0 walk r pose 0r | B 158 54 v 0 3.500 f5
+ 150 -   P 146.563 0 walk r pose 0r | B 158 57.500 v 0 3 f5
+ 153 -   P 146.563 0 walk r pose 0r | B 158 60.500 v 0 2.500 f5
+ 156 -   P 146.563 0 walk r pose 0r | B 158 63 v 0 2 f5
+ 159 -   P 146.563 0 walk r pose 0r | B 158 65 v 0 1.500 f5
+ 162 -   P 146.563 0 walk r pose 0r | B 158 66.500 v 0 1 f5
+ 165 -   P 146.563 0 walk r pose 0r | B 158 67.500 v 0 0.500 f5
+ 168 -   P 146.563 0 walk r pose 0r | B 158 68 v 0 0 f5
+ 171 -   P 146.563 0 walk r pose 0r | B 158 68 v 0 -0.500 f5
+ 174 -   P 146.563 0 walk r pose 0r | B 158 67.500 v 0 -1 f5
+ 177 -   P 146.563 0 walk r pose 0r | B 158 66.500 v 0 -1.500 f5
+ 180 -   P 146.563 0 walk r pose 0r | B 158 65 v 0 -2 f5
+ 183 -   P 146.563 0 walk r pose 0r | B 158 63 v 0 -2.500 f5
+ 186 -   P 146.563 0 walk r pose 0r | B 158 60.500 v 0 -3 f5
+ 189 -   P 146.563 0 walk r pose 0r | B 158 57.500 v 0 -3.500 f5
+ 192 -   P 146.563 0 walk r pose 0r | B 158 54 v 0 -4 f5
+ 195 -   P 146.563 0 walk r pose 0r | B 158 50 v 0 -4.500 f5
+ 198 -   P 146.563 0 walk r pose 0r | B 158 45.500 v 0 -5 f5
+ 201 -   P 146.563 0 walk r pose 0r | B 158 40.500 v 0 -5.500 f5
+ 204 -   P 146.563 0 walk r pose 0r | B 158 35 v 0 -6 f5
+ 207 -   P 146.563 0 walk r pose 0r | B 158 29 v 0 -6.500 f5
+ 210 A   P 146.563 0 walk r pose 0r | B 158 22.500 v 0 -7 f5
+ 213 -   P 146.563 0 walk/keepUp r pose 19r | B 158 15.500 v 0 -7.500 f5
+ 216 -   P 146.563 0 walk/keepUp r pose 19r | B 158 8 v 0 -8 f5
+ 219 -   P 146.563 0 walk/keepUp r pose 19r | B 158 16 v 0 7.500 f5 | kick
+ 222 -   P 146.563 0 walk/keepUp r pose 19r | B 158 23.500 v 0 7 f5
+ 225 -   P 146.563 0 walk/keepUp r pose 19r | B 158 30.500 v 0 6.500 f5
+ 228 -   P 146.563 0 walk r pose 0r | B 158 37 v 0 6 f5
+ 231 -   P 146.563 0 walk r pose 0r | B 158 43 v 0 5.500 f5
+ 234 -   P 146.563 0 walk r pose 0r | B 158 48.500 v 0 5 f5
+ 237 -   P 146.563 0 walk r pose 0r | B 158 53.500 v 0 4.500 f5
+ 240 -   P 146.563 0 walk r pose 0r | B 158 58 v 0 4 f5
+ 243 -   P 146.563 0 walk r pose 0r | B 158 62 v 0 3.500 f5
+ 246 -   P 146.563 0 walk r pose 0r | B 158 65.500 v 0 3 f5
+ 249 -   P 146.563 0 walk r pose 0r | B 158 68.500 v 0 2.500 f5
+ 252 -   P 146.563 0 walk r pose 0r | B 158 71 v 0 2 f5
+ 255 -   P 146.563 0 walk r pose 0r | B 158 73 v 0 1.500 f5
+ 258 -   P 146.563 0 walk r pose 0r | B 158 74.500 v 0 1 f5
+ 261 -   P 146.563 0 walk r pose 0r | B 158 75.500 v 0 0.500 f5
+ 264 -   P 146.563 0 walk r pose 0r | B 158 76 v 0 0 f5
+ 267 -   P 146.563 0 walk r pose 0r | B 158 76 v 0 -0.500 f5
+ 270 -   P 146.563 0 walk r pose 0r | B 158 75.500 v 0 -1 f5
+ 273 -   P 146.563 0 walk r pose 0r | B 158 74.500 v 0 -1.500 f5
+ 276 -   P 146.563 0 walk r pose 0r | B 158 73 v 0 -2 f5
+ 279 -   P 146.563 0 walk r pose 0r | B 158 71 v 0 -2.500 f5
+ 282 -   P 146.563 0 walk r pose 0r | B 158 68.500 v 0 -3 f5
+ 285 -   P 146.563 0 walk r pose 0r | B 158 65.500 v 0 -3.500 f5
+ 288 -   P 146.563 0 walk r pose 0r | B 158 62 v 0 -4 f5
+ 291 -   P 146.563 0 walk r pose 0r | B 158 58 v 0 -4.500 f5
+ 294 -   P 146.563 0 walk r pose 0r | B 158 53.500 v 0 -5 f5
+ 297 -   P 146.563 0 walk r pose 0r | B 158 48.500 v 0 -5.500 f5
+ 300 -   P 146.563 0 walk r pose 0r | B 158 43 v 0 -6 f5
+ 303 -   P 146.563 0 walk r pose 0r | B 158 37 v 0 -6.500 f5
+ 306 -   P 146.563 0 walk r pose 0r | B 158 30.500 v 0 -7 f5
+ 309 -   P 146.563 0 walk r pose 0r | B 158 23.500 v 0 -7.500 f5
+ 312 -   P 146.563 0 walk r pose 0r | B 158 16 v 0 -8 f5
+ 315 -   P 146.563 0 walk r pose 0r | B 158 8 v 0 -8.500 f5
+ 318 -   P 146.563 0 walk r pose 19r trap | B 157.500 8.500 v -0.500 0 f5
+ 321 -   P 146.563 0 walk r pose 19r trap | B 157.500 8.500 v 0 -0.500 f2
+ 324 -   P 146.563 0 walk r pose 19r trap | B 157.500 8 v 0 -1 f2
+ 327 A   P 146.563 0 walk r pose 0r | B 157.500 7 v 0 -1.500 f2
+ 330 A   P 146.563 0 walk r pose 0r | B 157.500 5.500 v 0 -2 f2
+ 333 -   P 146.563 0 walk/keepUp r pose 19r | B 157.500 3.500 v 0 -2.500 f2
+ 336 -   P 146.563 0 walk/keepUp r pose 19r | B 157.500 11.500 v 0 7.500 f2 | kick
+ 339 -   P 146.563 0 walk/keepUp r pose 19r | B 157.500 19 v 0 7 f2
+ 342 -   P 146.563 0 walk/keepUp r pose 19r | B 157.500 26 v 0 6.500 f2
+ 345 -   P 146.563 0 walk/keepUp r pose 19r | B 157.500 32.500 v 0 6 f2
+ 348 -   P 146.563 0 walk r pose 0r | B 157.500 38.500 v 0 5.500 f2
+ 351 -   P 146.563 0 walk r pose 0r | B 157.500 44 v 0 5 f2
+ 354 -   P 146.563 0 walk r pose 0r | B 157.500 49 v 0 4.500 f2
+ 357 -   P 146.563 0 walk r pose 0r | B 157.500 53.500 v 0 4 f2
+ 360 -   P 146.563 0 walk r pose 0r | B 157.500 57.500 v 0 3.500 f2
+ 363 -   P 146.563 0 walk r pose 0r | B 157.500 61 v 0 3 f2
+ 366 -   P 146.563 0 walk r pose 0r | B 157.500 64 v 0 2.500 f2
+ 369 -   P 146.563 0 walk r pose 0r | B 157.500 66.500 v 0 2 f2
+ 372 -   P 146.563 0 walk r pose 0r | B 157.500 68.500 v 0 1.500 f2
+ 375 -   P 146.563 0 walk r pose 0r | B 157.500 70 v 0 1 f2
+ 378 -   P 146.563 0 walk r pose 0r | B 157.500 71 v 0 0.500 f2
+ 381 -   P 146.563 0 walk r pose 0r | B 157.500 71.500 v 0 0 f2
+ 384 -   P 146.563 0 walk r pose 0r | B 157.500 71.500 v 0 -0.500 f2
+ 387 -   P 146.563 0 walk r pose 0r | B 157.500 71 v 0 -1 f2
+ 390 AB  P 146.563 4 air r pose 7r | B 157.500 70 v 0 -1.500 f2 | jump
+ 393 -   P 146.563 7.500 air r pose 7r | B 157.500 68.500 v 0 -2 f2
+ 396 -   P 146.563 10.500 air r pose 7r | B 157.500 66.500 v 0 -2.500 f2
+ 399 B   P 146.563 14.500 air/overhead r pose 7r | B 157.500 64 v 0 -3 f2
+ 402 -   P 146.563 18 air/overhead r pose 7r | B 157.500 61 v 0 -3.500 f2
+ 405 -   P 146.563 21 air/overhead r pose 11r | B 157.500 57.500 v 0 -4 f2
+ 408 -   P 146.563 23.500 air/overhead r pose 11r | B 157.500 53.500 v 0 -4.500 f2
+ 411 -   P 146.563 25.500 air/overhead r pose 11r | B 157.500 49 v 0 -5 f2
+ 414 -   P 146.563 27 air/overhead r pose 12r | B 157.500 44 v 0 -5.500 f2
+ 417 -   P 146.563 28 air/overhead r pose 14r | B 157.500 38.500 v 0 -6 f2
+ 420 -   P 146.563 28.500 air/overhead r pose 14r | B 181.500 38.500 v 8 0 f4 | shot
+ 423 -   P 146.563 28.500 air/overhead r pose 14r | B 189.500 38.500 v 8 0 f1
+ 426 -   P 146.563 28 air/overhead r pose 14r | B 197.500 38.500 v 8 0 f5
+ 429 -   P 146.563 27 air/overhead r pose 14r | B 205.500 38.500 v 8 0 f3
+ 432 -   P 146.563 25.500 air/overhead r pose 14r | B 213.500 38.500 v 8 0 f4
+ 435 -   P 146.563 23.500 air/overhead r pose 14r | B 221.500 38.500 v 8 0 f1
+ 438 -   P 146.563 21 air r pose 7r | B 229.500 38.500 v 8 0 f5
+ 441 -   P 146.563 18 air r pose 7r | B 237.500 38.500 v 8 0 f3
+ 444 -   P 146.563 14.500 air r pose 7r | B 245.500 38.500 v 8 0 f4
+ 447 -   P 146.563 10.500 air r pose 7r | B 253.500 38.500 v 8 0 f1
+ 450 -   P 146.563 6 air r pose 7r | B 261.500 38.500 v 8 0 f5
+ 453 -   P 146.563 1 air r pose 7r | B 259.500 40.500 v -2 2 f5
+ 456 -   P 146.563 0 land r pose 7r | B 257.500 42.500 v -2 2 f5 | land
+ 459 -   P 146.563 0 land r pose 9r | B 255.500 44.500 v -2 2 f2
+ 462 -   P 146.563 0 land r pose 9r | B 253.500 46.500 v -2 1.500 f2
+ 465 -   P 146.563 0 land r pose 9r | B 251.500 48 v -2 1 f2
+ 468 -   P 146.563 0 land r pose 9r | B 249.500 49 v -2 0.500 f1
+ 471 -   P 146.563 0 land r pose 9r | B 247.500 49.500 v -2 0 f1
+ 474 -   P 146.563 0 walk r pose 0r | B 245.500 49.500 v -2 -0.500 f1
+ 477 -   P 146.563 0 walk r pose 0r | B 243.500 49 v -2 -1 f0
+ 480 -   P 146.563 0 walk r pose 0r | B 241.500 48 v -2 -1.500 f0
+ 483 -   P 146.563 0 walk r pose 0r | B 239.500 46.500 v -2 -2 f0
+ 486 -   P 146.563 0 walk r pose 0r | B 237.500 44.500 v -2 -2.500 f3
+ 489 -   P 146.563 0 walk r pose 0r | B 235.500 42 v -2 -3 f3
+ 492 R   P 148.875 0 walk r pose 1r | B 233.500 39 v -2 -3.500 f3
+ 495 R   P 151.188 0 walk r pose 1r | B 231.500 35.500 v -2 -4 f2
+ 498 R   P 153.500 0 walk r pose 0r | B 229.500 31.500 v -2 -4.500 f2
+ 501 R   P 155.813 0 walk r pose 0r | B 227.500 27 v -2 -5 f2
+ 504 R   P 158.125 0 walk r pose 2r | B 225.500 22 v -2 -5.500 f1
+ 507 R   P 160.438 0 walk r pose 2r | B 223.500 16.500 v -2 -6 f1
+ 510 R   P 162.750 0 walk r pose 0r | B 221.500 10.500 v -2 -6.500 f1
+ 513 R   P 165.063 0 walk r pose 0r | B 219.500 4 v -2 -7 f0
+ 516 R   P 167.375 0 walk r pose 1r | B 217.500 0 v -2 -7.500 f0
+ 519 R   P 169.688 0 walk r pose 1r | B 215.688 2.746 v -1.813 2.246 f0 | bounce
+ 522 R   P 172 0 walk r pose 0r | B 213.875 4.992 v -1.813 1.746 f3
+ 525 R   P 174.313 0 walk r pose 0r | B 212.063 6.738 v -1.813 1.246 f3
+ 528 R   P 176.625 0 walk r pose 2r | B 210.250 7.984 v -1.813 0.746 f3
+ 531 -   P 178.188 0 walk r pose 0r | B 208.438 8.730 v -1.813 0.246 f2
+ 534 -   P 179 0 walk r pose 0r | B 206.625 8.977 v -1.813 -0.254 f2
+ 537 -   P 179.063 0 walk r pose 0r | B 204.813 8.723 v -1.813 -0.754 f2
+ 540 -   P 179.063 0 walk r pose 0r | B 203 7.969 v -1.813 -1.254 f1
+ 543 -   P 179.063 0 walk r pose 0r | B 201.188 6.715 v -1.813 -1.754 f1
+ 546 -   P 179.063 0 walk r pose 0r | B 199.375 4.961 v -1.813 -2.254 f1
+ 549 -   P 179.063 0 walk r pose 0r | B 197.563 2.707 v -1.813 -2.754 f0
+ 552 -   P 179.063 0 walk r pose 0r | B 195.750 0.953 v -1.813 -3.254 f0
+ 555 -   P 179.063 0 walk r pose 0r | B 194.109 1.578 v -1.641 0.123 f0 | bounce
+ 558 -   P 179.063 0 walk r pose 19r trap | B 194.109 2.078 v 0 0 f3
+ 561 -   P 179.063 0 walk r pose 19r trap | B 194.109 2.078 v -0.500 -0.500 f3
+ 564 -   P 179.063 0 walk r pose 19r trap | B 193.609 1.578 v -0.500 -1 f3
+ 567 -   P 179.063 0 walk r pose 19r trap | B 193.109 0.578 v -0.500 -1.500 f3
+ 570 -   P 179.063 0 walk r pose 19r trap | B 192.609 0.078 v -0.500 -2 f3
+ 573 -   P 179.063 0 walk r pose 19r ball | B 191.609 0.078 v 0 0 f3 | pickup
+ 576 -   P 179.063 0 walk r pose 0r ball | B 191.609 0.078 v 0 0 f3
+ 579 -   P 179.063 0 walk r pose 0r ball | B 191.609 0.078 v 0 0 f3
+ 582 -   P 179.063 0 walk r pose 0r ball | B 191.609 0.078 v 0 0 f3
+ 585 -   P 179.063 0 walk r pose 0r ball | B 191.609 0.078 v 0 0 f3
+ 588 -   P 179.063 0 walk r pose 0r ball | B 191.609 0.078 v 0 0 f3
+ 591 -   P 179.063 0 walk r pose 0r ball | B 191.609 0.078 v 0 0 f3
+ 594 -   P 179.063 0 walk r pose 0r ball | B 191.609 0.078 v 0 0 f3
+ 597 -   P 179.063 0 walk r pose 0r ball | B 191.609 0.078 v 0 0 f3
+ 600 L   P 176.750 0 walk l pose 1l ball | B 164.609 0.078 v -2.313 0 f3
+ 603 L   P 174.438 0 walk l pose 1l ball | B 162.609 0.078 v -2.313 0 f2
+ 606 -   P 172.875 0 walk l pose 0l ball | B 160.609 0.078 v -1.563 0 f2
+ 609 L   P 169.375 0 run l pose 3l ball | B 155.609 0.078 v -3.500 0 f1
+ 612 L   P 165.875 0 run l pose 3l ball | B 151.609 0.078 v -3.500 0 f1
+ 615 L   P 162.375 0 run l pose 0l ball | B 147.609 0.078 v -3.500 0 f0
+ 618 L   P 158.875 0 run l pose 0l ball | B 143.609 0.078 v -3.500 0 f0
+ 621 L   P 155.375 0 run l pose 3l ball | B 143.609 0.078 v -3.500 0 f3
+ 624 L   P 151.875 0 run l pose 3l ball | B 139.609 0.078 v -3.500 0 f3
+ 627 L   P 148.375 0 run l pose 0l ball | B 135.609 0.078 v -3.500 0 f2
+ 630 L   P 144.875 0 run l pose 0l ball | B 131.609 0.078 v -3.500 0 f2
+ 633 L   P 141.375 0 run l pose 3l ball | B 127.609 0.078 v -3.500 0 f1
+ 636 L   P 137.875 0 run l pose 3l ball | B 123.609 0.078 v -3.500 0 f1
+ 639 L   P 134.375 0 run l pose 0l ball | B 119.609 0.078 v -3.500 0 f0
+ 642 L   P 130.875 0 run l pose 0l ball | B 115.609 0.078 v -3.500 0 f0
+ 645 L   P 127.375 0 run l pose 3l ball | B 115.609 0.078 v -3.500 0 f3
+ 648 L   P 123.875 0 run l pose 3l ball | B 111.609 0.078 v -3.500 0 f3
+ 651 L   P 120.375 0 run l pose 0l ball | B 107.609 0.078 v -3.500 0 f2
+ 654 L   P 116.875 0 run l pose 0l ball | B 103.609 0.078 v -3.500 0 f2
+ 657 L   P 113.375 0 run l pose 3l ball | B 99.609 0.078 v -3.500 0 f1
+ 660 AB  P 109.875 4 air l pose 7l ball | B 97.609 4 v -3.500 0 f1 | jump
+ 663 AB  P 106.375 7.500 air l pose 7l ball | B 94.609 7.500 v -3.500 0 f0
+ 666 -   P 102.875 10.500 air l pose 7l ball | B 90.609 10.500 v -3.500 0 f0
+ 669 -   P 99.375 13 air l pose 7l ball | B 87.609 13 v -3.500 0 f3
+ 672 RB  P 97.625 17 air/volleyOwnBall r pose 7r | B 88.109 19.500 v 0.500 6 f3
+ 675 B   P 95.875 20.500 air/volleyOwnBall r pose 7r | B 88.609 25.500 v 0.500 5.500 f3
+ 678 -   P 94.125 23.500 air/volleyOwnBall r pose 7r | B 89.109 31 v 0.500 5 f3
+ 681 -   P 92.375 26 air/volleyOwnBall r pose 7r | B 89.609 36 v 0.500 4.500 f3
+ 684 -   P 90.625 28 air/volleyOwnBall r pose 10r | B 90.109 40.500 v 0.500 4 f3
+ 687 -   P 88.875 29.500 air/volleyOwnBall r pose 10r | B 90.609 44.500 v 0.500 3.500 f3
+ 690 -   P 87.125 30.500 air/volleyOwnBall r pose 10r | B 91.109 48 v 0.500 3 f3
+ 693 -   P 85.375 31 air/volleyOwnBall r pose 10r | B 91.609 51 v 0.500 2.500 f3
+ 696 -   P 83.625 31 air/volleyOwnBall r pose 20r | B 115.609 51 v 8 0 f4 | shot
+ 699 -   P 81.875 30.500 air/volleyOwnBall r pose 20r | B 123.609 51 v 8 0 f1
+ 702 -   P 80.125 29.500 air/volleyOwnBall r pose 20r | B 131.609 51 v 8 0 f5
+ 705 -   P 78.375 28 air r pose 7r | B 139.609 51 v 8 0 f3
+ 708 -   P 76.625 26 air r pose 7r | B 147.609 51 v 8 0 f4
+ 711 -   P 74.875 23.500 air r pose 7r | B 155.609 51 v 8 0 f1
+ 714 -   P 73.125 20.500 air r pose 7r | B 163.609 51 v 8 0 f5
+ 717 -   P 71.375 17 air r pose 7r | B 171.609 51 v 8 0 f3
+ 720 -   P 69.625 13 air r pose 7r | B 179.609 51 v 8 0 f4
+ 723 -   P 67.875 8.500 air r pose 7r | B 187.609 51 v 8 0 f1
+ 726 -   P 66.125 3.500 air r pose 7r | B 195.609 51 v 8 0 f5
+ 729 -   P 64.375 0 land r pose 7r | B 203.609 51 v 8 0 f3 | land
+ 732 -   P 63.625 0 land r pose 9r | B 211.609 51 v 8 0 f4
+ 735 -   P 63.625 0 land r pose 9r | B 219.609 51 v 8 0 f1
+ 738 -   P 63.625 0 land r pose 9r | B 227.609 51 v 8 -0.500 f5
+ 741 -   P 63.625 0 land r pose 9r | B 235.609 50.500 v 8 -1 f3
+ 744 -   P 63.625 0 land r pose 9r | B 243.609 49.500 v 8 -1.500 f4
+ 747 -   P 63.625 0 walk r pose 0r | B 251.609 48 v 8 -2 f1
+ 750 -   P 63.625 0 walk r pose 0r | B 259.609 46 v 8 -2.500 f5
+ 753 -   P 63.625 0 walk r pose 0r | B 257.609 48.500 v -2 2 f5
+ 756 -   P 63.625 0 walk r pose 0r | B 255.609 50.500 v -2 1.500 f5
+ 759 -   P 63.625 0 walk r pose 0r | B 253.609 52 v -2 1 f2
+ 762 -   P 63.625 0 walk r pose 0r | B 251.609 53 v -2 0.500 f2
+ 765 -   P 63.625 0 walk r pose 0r | B 249.609 53.500 v -2 0 f2
+ 768 -   P 63.625 0 walk r pose 0r | B 247.609 53.500 v -2 -0.500 f1
+ 771 -   P 63.625 0 walk r pose 0r | B 245.609 53 v -2 -1 f1
+ 774 -   P 63.625 0 walk r pose 0r | B 243.609 52 v -2 -1.500 f1
+ 777 -   P 63.625 0 walk r pose 0r | B 241.609 50.500 v -2 -2 f0
+ 780 -   P 63.625 0 walk r pose 0r | B 239.609 48.500 v -2 -2.500 f0
+ 783 -   P 63.625 0 walk r pose 0r | B 237.609 46 v -2 -3 f0
+ 786 -   P 63.625 0 walk r pose 0r | B 235.609 43 v -2 -3.500 f3
+ 789 -   P 63.625 0 walk r pose 0r | B 233.609 39.500 v -2 -4 f3
+ 792 -   P 63.625 0 walk r pose 0r | B 231.609 35.500 v -2 -4.500 f3
+ 795 -   P 63.625 0 walk r pose 0r | B 229.609 31 v -2 -5 f2
+ 798 -   P 63.625 0 walk r pose 0r | B 227.609 26 v -2 -5.500 f2

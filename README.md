@@ -3,6 +3,7 @@
 [![Play the demo](https://img.shields.io/badge/%E2%96%B6%20play-demo-155fd9?style=flat-square)](https://mperor.github.io/goal3-warmup-web/)
 [![Version](https://img.shields.io/github/v/tag/mperor/goal3-warmup-web?style=flat-square&label=version&color=155fd9)](https://github.com/mperor/goal3-warmup-web/tags)
 [![Pages](https://img.shields.io/github/actions/workflow/status/mperor/goal3-warmup-web/pages.yml?branch=master&style=flat-square&label=pages)](https://github.com/mperor/goal3-warmup-web/actions/workflows/pages.yml)
+[![Tests](https://img.shields.io/github/actions/workflow/status/mperor/goal3-warmup-web/test.yml?branch=master&style=flat-square&label=tests)](https://github.com/mperor/goal3-warmup-web/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-155fd9?style=flat-square)](LICENSE)
 ![No dependencies](https://img.shields.io/badge/dependencies-none-155fd9?style=flat-square)
 ![Keyboard, gamepad, touch](https://img.shields.io/badge/controls-keyboard%20%C2%B7%20gamepad%20%C2%B7%20touch-155fd9?style=flat-square)
@@ -66,6 +67,27 @@ fonts/                 local fonts (SIL OFL 1.1)
 docs/reference/        reference images and the Mesen movie the tools start from
 tools/                 the tools that capture data from the original and check the game against it
 ```
+
+## 🧪 Tests
+
+```sh
+node --test "tests/*.test.mjs"
+```
+
+Node.js 22 (or 21+), no dependencies; GitHub Actions runs them on every pull request. They need
+neither the ROM nor the recordings:
+
+| File                          | What it checks                                                              |
+|-------------------------------|-----------------------------------------------------------------------------|
+| `tests/golden.test.mjs`       | the plans of `tests/plans.mjs` (every mode, sound and action but one) against the traces in `tests/golden/`, tick by tick |
+| `tests/invariants.test.mjs`   | 300 seeded random plans against rules that always hold (on the screen, one relation with the ball at a time, ...) |
+| `tests/interaction.test.mjs`  | what a press does with the ball, and its sounds                             |
+| `tests/ball.test.mjs`         | the ball's physics against the original's numbers                           |
+| `tests/preload.test.mjs`      | the `modulepreload` list in `index.html`                                    |
+
+A change to the game's behaviour shows in the golden traces; when it is meant, write them anew with
+`UPDATE_GOLDEN=1 node --test "tests/*.test.mjs"`, and the diff of `tests/golden/` shows what changed.
+`tools/check_replay.mjs` and `tools/compare_sim.mjs` (below) still judge against the original.
 
 ## 🛠️ Tools
 
