@@ -57,7 +57,7 @@ export function createSound() {
         processorOptions: { data: decode(SOUND_DATA), music: true },
       });
       node.connect(gain);
-    });
+    }).catch((error) => console.warn('No sound: the sound chip did not load.', error));
   }
 
   return {
@@ -65,6 +65,10 @@ export function createSound() {
     start,
     pause() {
       if (context) context.suspend();
+    },
+    // Resumes it after pause(), only if it has started (unlike start, which a gesture calls).
+    resume() {
+      if (context?.state === 'suspended') context.resume();
     },
     play(name) {
       if (node) node.port.postMessage({ type: 'sfx', name });

@@ -1,6 +1,7 @@
 // Records the warm-up screen as an animated GIF: the game logic and renderer run
 // headless on a scripted input plan, drawn over the title scene as index.html lays it out.
 // Run: node tools/record_gif.mjs [--scale 2] [--out tools/.cache/warmup.gif] [--png frame]
+// With --preview it writes preview.png, the picture shown with links to the page, instead.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import { PRESS_START } from '../js/art/press-start.js';
@@ -279,13 +280,20 @@ function encodeGif(frames, palette, scale, frameStep) {
   return { gif: Buffer.from(bytes), frames: shown.length };
 }
 
-function encodePng(pixels, palette, scale) {
-  const w = WIDTH * scale;
-  const h = HEIGHT * scale;
+// The frame scaled up, centred on a w x h image of the background colour (by default just its size).
+function encodePng(pixels, palette, scale, w = WIDTH * scale, h = HEIGHT * scale) {
   const big = scaleUp(pixels, WIDTH, HEIGHT, scale);
+  const x0 = Math.floor((w - WIDTH * scale) / 2);
+  const y0 = Math.floor((h - HEIGHT * scale) / 2);
   const raw = Buffer.alloc((w * 3 + 1) * h);
   for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) Buffer.from(rgb(palette[big[y * w + x]])).copy(raw, y * (w * 3 + 1) + 1 + x * 3);
+    for (let x = 0; x < w; x++) {
+      const sx = x - x0;
+      const sy = y - y0;
+      const inside = sx >= 0 && sy >= 0 && sx < WIDTH * scale && sy < HEIGHT * scale;
+      const color = inside ? palette[big[sy * WIDTH * scale + sx]] : BG;
+      Buffer.from(rgb(color)).copy(raw, y * (w * 3 + 1) + 1 + x * 3);
+    }
   }
   const crcTable = Array.from({ length: 256 }, (_, n) => {
     for (let k = 0; k < 8; k++) n = n & 1 ? 0xedb88320 ^ (n >>> 1) : n >>> 1;
@@ -317,7 +325,11 @@ const option = (name, fallback) => (args.includes(name) ? args[args.indexOf(name
 const scale = Number(option('--scale', 2));
 const frames = await record();
 
-if (args.includes('--png')) {
+if (args.includes('--preview')) {
+  // The picture shown with links to the page (Open Graph): the first frame on 1200 x 630.
+  writeFileSync('preview.png', encodePng(frames[0], palette, 3, 1200, 630));
+  console.log('wrote preview.png');
+} else if (args.includes('--png')) {
   const frame = Number(option('--png'));
   const dir = new URL('./.cache/', import.meta.url);
   mkdirSync(dir, { recursive: true });

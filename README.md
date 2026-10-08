@@ -51,6 +51,7 @@ js/audio/              NES sound chip (APU) emulation in an AudioWorklet, the ca
 js/art/                sprites, the title logo and the press-start prompt as pixel data
 js/pixel-*.js          bitmap text and pixel art rendering
 js/touch.js            touch controls and full screen
+js/scale.js            snaps the scale to whole screen pixels
 fonts/                 local fonts (SIL OFL 1.1)
 docs/reference/        reference images and the Mesen movie the tools start from
 tools/                 the tools that capture data from the original and check the game against it
@@ -75,7 +76,7 @@ original cartridge** at `rom/nsl-jp.nes` (git-ignored; no ROM is part of this re
 | `tools/check_replay.mjs`     | replays recorded play sessions through the game logic and compares with RAM  |
 | `tools/gen_sprites.py`       | builds `js/art/sprites.js` from the frame dumps and a PPU snapshot           |
 | `tools/gen_favicon.mjs`      | draws the favicon from the ball sprite                                       |
-| `tools/record_gif.mjs`       | records a GIF of the screen from the game logic on a scripted input plan     |
+| `tools/record_gif.mjs`       | records a GIF of the screen from the game logic on a scripted input plan; with `--preview`, `preview.png` |
 
 The play-session recordings in `tools/data/` are local and not committed; record your own with
 `tools/mesen/frame-dump.lua` and `tools/mesen/export-screen.lua` (see `tools/recording.py`).
@@ -93,6 +94,7 @@ The following is derived from the original game and is **not** covered by this p
 - `js/art/title-logo.js`, `js/art/press-start.js`: the title logo and prompt, traced from the original screen
 - `js/audio/sound-data.js`: the music and sound effects, as sound chip register writes
 - `docs/reference/`: screenshots of the original and an input recording for it
+- `preview.png`, the picture shown with links to the page: drawn with the sprites and art above
 - the title text and the copyright line of the original's title screen in `index.html`
 
 If you hold rights to this material and want it removed, please open an issue.

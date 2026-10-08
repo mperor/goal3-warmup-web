@@ -19,8 +19,10 @@
   --vh: 100vh;
   /* Room left and right of the scene, for the touch controls in landscape. */
   --side: 16px;
-  /* One NES pixel; the scene is 256 NES pixels wide and, with its padding, 192 high. */
-  --px: min(4px, calc((100vw - 2 * var(--side)) / 256), calc((var(--vh) - 32px) / 192));
+  /* One NES pixel; the scene is 256 NES pixels wide and, with its padding, 192 high. js/scale.js
+     snaps it to whole screen pixels (--px-snap) where it can. */
+  --px-fit: min(4px, calc((100vw - 2 * var(--side)) / 256), calc((var(--vh) - 32px) / 192));
+  --px: var(--px-snap, var(--px-fit));
 
   --font-ja: "DotGothic16", monospace;
   --font-pixel: "Press Start 2P", monospace;
@@ -181,6 +183,14 @@ body {
   width: calc(var(--px) * var(--w));
   height: calc(var(--px) * var(--h));
   shape-rendering: crispEdges;
+}
+
+.px-probe {
+  position: absolute;
+  width: var(--px-fit);
+  height: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 [hidden] {
