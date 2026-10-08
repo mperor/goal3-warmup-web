@@ -153,11 +153,71 @@ main {
   width: 100%;
 }
 
-#strip {
+#strip,
+#detail {
   display: block;
   width: 100%;
   cursor: pointer;
   background: var(--panel);
+}
+
+.detail-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 4px;
+  color: var(--dim);
+}
+
+.legend .outlined {
+  border: 1px solid var(--accent);
+}
+
+.copied {
+  color: var(--accent);
+  align-self: center;
+}
+
+.error {
+  color: #ff5a5a;
+  margin-left: 8px;
+}
+
+.marks-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  margin: 14px 0 4px;
+}
+
+.marks-title button:first-of-type {
+  margin-left: 8px;
+}
+
+.mark-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mark-item {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.mark-item input {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+
+.mark-item.here button:first-child {
+  border-color: #ff4d6d;
+  color: #ff4d6d;
 }
 
 .legend {
@@ -229,90 +289,151 @@ main {
   background: var(--line);
 }
 
-.preview {
-  display: flex;
+.sfx {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 14px;
   align-items: center;
-  gap: 12px;
 }
 
-.preview canvas {
+/* Poses & actions: the list, and the one chosen */
+
+.catalog:not([hidden]) {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.catalog-list {
+  flex: none;
+  width: 230px;
+  max-height: calc(100vh - 90px);
+  overflow: auto;
+  position: sticky;
+  top: 8px;
+}
+
+.catalog-list h3 {
+  font-size: 11px;
+  color: var(--dim);
+  text-transform: uppercase;
+  margin: 12px 0 4px;
+}
+
+.catalog-list button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border-color: transparent;
+  background: transparent;
+}
+
+.catalog-list button small {
+  color: var(--dim);
+  float: right;
+}
+
+.catalog-list button[aria-current="true"] {
+  background: var(--panel);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.catalog-detail {
+  flex: 1;
+  min-width: 0;
+}
+
+.catalog-detail h2 {
+  margin-top: 4px;
+}
+
+.catalog-detail h2 small,
+.catalog-detail h4 {
+  color: var(--dim);
+  font-weight: 400;
+}
+
+.catalog-detail h4 {
+  margin: 0 0 4px;
+}
+
+.how {
+  font-size: 14px;
+  max-width: 70ch;
+}
+
+.player-preview {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  margin: 10px 0;
+}
+
+.player-preview .big {
   width: 192px;
   height: 192px;
   image-rendering: pixelated;
   background: var(--scene);
 }
 
-.action {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 4px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.action:hover,
-.action.selected {
-  background: var(--panel);
-}
-
-.action > b {
-  width: 130px;
-  flex: none;
-}
-
-.cells {
+.player-preview .controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
+  align-items: center;
+  gap: 6px;
 }
 
-.cell {
-  width: 52px;
-  text-align: center;
-  font-size: 10px;
-  color: var(--dim);
-}
-
-.cell canvas {
-  display: block;
-  width: 52px;
-  height: 52px;
-  image-rendering: pixelated;
-  background: var(--scene);
-}
-
-.cell.hit canvas {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-.cell .event {
+.player-preview .position {
+  width: 100%;
   color: var(--accent);
 }
 
-.poses {
+.gantt {
+  display: block;
+  width: 100%;
+  background: var(--panel);
+  cursor: pointer;
+}
+
+.facts {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 24px;
+  margin-top: 10px;
 }
 
-.pose {
-  text-align: center;
-  font-size: 11px;
+.facts ul {
+  margin: 0;
+  padding-left: 18px;
 }
 
-.pose canvas {
-  display: block;
-  width: 96px;
-  height: 96px;
+.facts .links button {
+  margin: 0 4px 4px 0;
+}
+
+.sheet {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.sheet figure {
+  margin: 0;
+}
+
+.sheet canvas {
+  width: 144px;
+  height: 72px;
   image-rendering: pixelated;
   background: var(--scene);
 }
 
-.sfx {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 6px 14px;
-  align-items: center;
+.sheet figcaption {
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.sheet figcaption b {
+  color: var(--text);
 }

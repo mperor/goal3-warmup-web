@@ -1,22 +1,24 @@
 // The inspector: a plan (from tests/plans.mjs, edited, or recorded from the keyboard) played
-// through the game logic frame by frame, with the whole state, the poses, actions and sounds.
-// Serve the repository and open /tools/inspector/ (it is not published with the page).
-import { PALETTES, PLAYER_POSES } from '../../js/art/sprites.js';
+// through the game logic frame by frame, with the whole state, marks on the moments that look
+// wrong, the poses, actions and sounds. Serve the repository and open /tools/inspector/ (it is
+// not published with the page).
 import { createSound } from '../../js/audio/sound.js';
 import { SOUND_DATA } from '../../js/audio/sound-data.js';
-import { ACTIONS, ANIMATIONS, POSE } from '../../js/game/player.js';
-import { createRenderer, paintParts } from '../../js/game/render.js';
-import { createRun, FRAMES_PER_TICK, planOf, runPlan, stepFrame } from '../../tests/harness.mjs';
+import { createRenderer } from '../../js/game/render.js';
+import { createRun, FRAMES_PER_TICK, heldAt, planOf, runPlan, stepFrame } from '../../tests/harness.mjs';
 import { PLANS } from '../../tests/plans.mjs';
+import { initCatalog } from './catalog.js';
+import { drawPose, escape, FRAME_MS, POSE_NAMES } from './shared.js';
 
 const $ = (selector) => document.querySelector(selector);
 const SCALE = 3;
-const FRAME_MS = 1000 / 60;
 const MAX_RECORD_FRAMES = 60 * 60;
-const POSE_NAMES = Object.fromEntries(Object.entries(POSE).map(([name, i]) => [i, name]));
+const STORAGE_KEY = 'goal3-inspector:plans';
 const KEYS = { ArrowLeft: ['left'], ArrowRight: ['right'], ArrowUp: ['up'], ArrowDown: ['down'], KeyX: ['a'], KeyZ: ['b'], Space: ['a', 'b'] };
+const BUTTONS = [['L', 'left', '#9ad'], ['R', 'right', '#9ad'], ['U', 'up', '#b9e'], ['D', 'down', '#b9e'], ['A', 'a', '#ffd34d'], ['B', 'b', '#ff8a5a']];
 const MODE_COLORS = { walk: '#3f8f5a', run: '#7cc35a', skid: '#c8873f', air: '#4f8fff', land: '#2fb3b3', dive: '#b05cc8' };
 const SOUND_COLORS = { kick: '#ffd34d', shot: '#ff5a5a', bounce: '#9aa0aa', jump: '#8fd3ff', land: '#2fb3b3', pickup: '#6fdc6f' };
+const MARK_COLOR = '#ff4d6d';
 const SOUND_NOTES = {
   kick: 'a pass, a chip, keeping the ball up, a volley from the ground, juggling it on the run',
   shot: 'a shot: B on the ground, a dive, the kicks in the air at the goal',
@@ -29,13 +31,67 @@ const SOUND_NOTES = {
 const sound = createSound({ music: false });
 document.addEventListener('pointerdown', () => sound.start(), { once: true, capture: true });
 
+// --- Plans: the built-in ones, and those recorded or edited here (kept in this browser) ---
+
+// name -> { frames, plan, marks: [{ frame, note }], own }
+const plans = {};
+for (const [name, [frames, plan]] of Object.entries(PLANS)) plans[name] = { frames, plan, marks: [], own: false };
+
+function restore() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
+    for (const [name, p] of Object.entries(saved)) {
+      if (p.own) plans[name] = p;
+      else if (plans[name]) plans[name].marks = p.marks ?? [];
+    }
+  } catch {
+    // Nothing kept then.
+  }
+}
+
+function save() {
+  try {
+    const kept = Object.fromEntries(Object.entries(plans).filter(([, p]) => p.own || p.marks.length)
+      .map(([name, p]) => [name, p.own ? p : { marks: p.marks }]));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(kept));
+  } catch {
+    // Not kept then.
+  }
+}
+
+function fillPlans(selected) {
+  const option = (name) => new Option(`${name}${plans[name].marks.length ? ` ⚑${plans[name].marks.length}` : ''}`, name, false, name === selected);
+  const own = Object.keys(plans).filter((n) => plans[n].own);
+  const groups = [['Recorded and edited here', own], ['tests/plans.mjs', Object.keys(plans).filter((n) => !plans[n].own)]];
+  $('#plan').replaceChildren(...groups.filter(([, names]) => names.length).map(([label, names]) => {
+    const group = document.createElement('optgroup');
+    group.label = label;
+    group.append(...names.map(option));
+    return group;
+  }));
+  $('#delete').disabled = !plans[selected]?.own;
+}
+
+function addPlan(prefix, frames, plan, marks = []) {
+  const name = `${prefix} ${new Date().toLocaleString()}`;
+  plans[name] = { frames, plan, marks, own: true };
+  save();
+  fillPlans(name);
+  load(name);
+}
+
 // --- Tabs ---
 
-document.querySelectorAll('[data-tab]').forEach((tab) => tab.addEventListener('click', () => {
-  document.querySelectorAll('[data-tab]').forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
-  document.querySelectorAll('.tab').forEach((section) => (section.hidden = section.id !== tab.dataset.tab));
-  if (tab.dataset.tab !== 'timeline') pause();
-}));
+let catalog = null;
+document.querySelectorAll('[data-tab]').forEach((tab) => tab.addEventListener('click', () => showTab(tab.dataset.tab)));
+
+function showTab(id) {
+  document.querySelectorAll('[data-tab]').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === id)));
+  document.querySelectorAll('.tab').forEach((section) => (section.hidden = section.id !== id));
+  if (id !== 'timeline') pause();
+  if (id === 'gallery') catalog.shown();
+  if (id === 'timeline') redraw();
+}
 
 // --- The scene ---
 
@@ -79,52 +135,66 @@ function draw(s, pose, facing) {
 
 // --- The timeline: one entry per frame ---
 
-let timeline = []; // { s, pose, facing, input, sounds }
+let name = null;
+let timeline = []; // { s, pose, facing, held, input, sounds }
 let current = 0;
-let plans = { ...Object.fromEntries(Object.entries(PLANS).map(([name, [frames, plan]]) => [name, { frames, plan }])) };
 
-function load(name) {
+function load(planName) {
+  name = planName;
   const { frames, plan } = plans[name];
   timeline = [];
   runPlan(plan, frames, () => {}, (s, info) => {
-    timeline.push({ s: structuredClone(s), pose: info.pose, facing: info.facing, input: info.input, sounds: info.input ? [...s.sounds] : [] });
+    timeline.push({
+      s: structuredClone(s), pose: info.pose, facing: info.facing, held: heldAt(plan, info.frame),
+      input: info.input, sounds: info.input ? [...s.sounds] : [],
+    });
   });
   $('#plan-text').value = JSON.stringify({ frames, plan });
   $('#frame').max = String(timeline.length - 1);
-  drawStrip();
+  $('#delete').disabled = !plans[name].own;
+  showMarks();
   seek(0);
-}
-
-function fillPlans(selected) {
-  $('#plan').replaceChildren(...Object.keys(plans).map((name) => new Option(name, name, false, name === selected)));
 }
 
 $('#plan').addEventListener('change', () => load($('#plan').value));
 $('#plan-run').addEventListener('click', () => {
   try {
     const { frames, plan } = JSON.parse($('#plan-text').value);
-    const name = `edited ${new Date().toLocaleTimeString()}`;
-    plans[name] = { frames, plan };
-    fillPlans(name);
-    load(name);
+    $('#plan-error').textContent = '';
+    addPlan('edited', frames, plan);
   } catch (error) {
-    alert(`Not a plan: ${error.message}`);
+    $('#plan-error').textContent = `Not a plan: ${error.message}`;
   }
+});
+$('#delete').addEventListener('click', () => {
+  if (!plans[name]?.own) return;
+  delete plans[name];
+  save();
+  const first = Object.keys(plans)[0];
+  fillPlans(first);
+  load(first);
 });
 
 function seek(frame, { sounds = false } = {}) {
   const to = Math.max(0, Math.min(timeline.length - 1, frame));
   if (sounds && $('#sound').checked) {
-    for (let f = current + 1; f <= to; f++) timeline[f].sounds.forEach((name) => sound.play(name));
+    for (let f = current + 1; f <= to; f++) timeline[f].sounds.forEach((n) => sound.play(n));
   }
   current = to;
+  redraw();
+}
+
+function redraw() {
   const entry = timeline[current];
+  if (!entry || $('#timeline').hidden) return;
   draw(entry.s, entry.pose, entry.facing);
   $('#frame').value = String(current);
   const tick = Math.floor(current / FRAMES_PER_TICK);
   $('#position').textContent = `frame ${current} · tick ${tick} · ${(current / 60).toFixed(2)} s`;
   showState(entry, timeline[current - 1]);
   drawStrip();
+  drawDetail();
+  document.querySelectorAll('.mark-item').forEach((item) => item.classList.toggle('here', Number(item.dataset.frame) === current));
 }
 
 // --- Playing ---
@@ -172,75 +242,289 @@ $('#frame').addEventListener('input', () => {
 });
 
 document.addEventListener('keydown', (event) => {
-  if (recording || $('#timeline').hidden || event.target.closest('textarea, select, input[type="text"]')) return;
+  if (recording || $('#timeline').hidden || event.target.closest('textarea, select, input')) return;
   const keys = {
     Space: () => (playing ? pause() : play()),
     ArrowLeft: () => seek(current - (event.shiftKey ? FRAMES_PER_TICK : 1)),
     ArrowRight: () => seek(current + (event.shiftKey ? FRAMES_PER_TICK : 1), { sounds: true }),
     Home: () => seek(0),
     End: () => seek(timeline.length - 1),
+    KeyM: () => addMark(current),
+    BracketLeft: () => jumpMark(-1),
+    BracketRight: () => jumpMark(1),
   };
   if (!keys[event.code]) return;
   event.preventDefault();
   if (event.code !== 'Space') pause();
   keys[event.code]();
 });
-$('#marks').addEventListener('change', () => seek(current));
+$('#marks').addEventListener('change', redraw);
+$('#zoom').addEventListener('change', redraw);
 
-// --- The strip: a column per tick (mode below, action above), sounds as marks on top ---
+// --- The overview: the whole plan ---
 
 const strip = $('#strip');
-
-function drawStrip() {
-  const width = strip.clientWidth || 768;
-  if (strip.width !== width) strip.width = width;
-  const ctx = strip.getContext('2d');
-  ctx.clearRect(0, 0, strip.width, strip.height);
-  const ticks = timeline.filter((e) => e.input);
-  const w = strip.width / Math.max(1, ticks.length);
-  ticks.forEach((entry, i) => {
-    const p = entry.s.player;
-    ctx.fillStyle = MODE_COLORS[p.mode] ?? '#666';
-    ctx.fillRect(i * w, 30, Math.ceil(w), 24);
-    if (p.action) {
-      ctx.fillStyle = `hsl(${hash(p.action.name) % 360} 60% 55%)`;
-      ctx.fillRect(i * w, 16, Math.ceil(w), 12);
-    }
-    entry.sounds.forEach((name, k) => {
-      ctx.fillStyle = SOUND_COLORS[name] ?? '#fff';
-      ctx.fillRect(i * w, 2 + k * 5, Math.max(2, Math.ceil(w)), 4);
-    });
-  });
-  const x = (current / Math.max(1, timeline.length - 1)) * strip.width;
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(Math.round(x) - 1, 0, 2, strip.height);
-}
-
 const hash = (text) => [...text].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 
-function seekStrip(event) {
-  const box = strip.getBoundingClientRect();
-  pause();
-  seek(Math.round(((event.clientX - box.left) / box.width) * (timeline.length - 1)));
+function fitCanvas(canvas) {
+  const width = canvas.clientWidth || 768;
+  if (canvas.width !== width) canvas.width = width;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  return ctx;
 }
-strip.addEventListener('pointerdown', (event) => {
-  seekStrip(event);
-  strip.setPointerCapture(event.pointerId);
+
+function drawStrip() {
+  const ctx = fitCanvas(strip);
+  const n = timeline.length;
+  const fw = strip.width / Math.max(1, n);
+  const x = (f) => f * fw;
+  // Presses, at least 2 px wide however short (on top), then sounds, action, mode.
+  timeline.forEach((entry, f) => {
+    const before = timeline[f - 1]?.held;
+    BUTTONS.forEach(([, key, color]) => {
+      if (entry.held[key] && !before?.[key]) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x(f), 0, Math.max(2, fw), 6);
+      }
+    });
+    if (!entry.input) return;
+    const p = entry.s.player;
+    entry.sounds.forEach((s, k) => {
+      ctx.fillStyle = SOUND_COLORS[s] ?? '#fff';
+      ctx.fillRect(x(f), 8 + k * 4, Math.max(2, fw * 3), 3);
+    });
+    if (p.action) {
+      ctx.fillStyle = `hsl(${hash(p.action.name) % 360} 60% 55%)`;
+      ctx.fillRect(x(f), 18, Math.ceil(fw * 3), 10);
+    }
+    ctx.fillStyle = MODE_COLORS[p.mode] ?? '#666';
+    ctx.fillRect(x(f), 30, Math.ceil(fw * 3), 18);
+  });
+  // The marks, and the window the detail below shows.
+  plans[name].marks.forEach(({ frame }) => flag(ctx, x(frame), 0, strip.height));
+  const [from, to] = detailWindow();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.strokeRect(x(from) + 0.5, 0.5, Math.max(2, x(to) - x(from)), strip.height - 1);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(Math.round(x(current)) - 1, 0, 2, strip.height);
+}
+
+function flag(ctx, x, top, height) {
+  ctx.fillStyle = MARK_COLOR;
+  ctx.fillRect(Math.round(x), top, 2, height);
+  ctx.beginPath();
+  ctx.moveTo(x + 2, top);
+  ctx.lineTo(x + 9, top + 4);
+  ctx.lineTo(x + 2, top + 8);
+  ctx.fill();
+}
+
+function scrubbing(canvas, frameAt) {
+  const go = (event) => {
+    pause();
+    seek(frameAt(event.clientX - canvas.getBoundingClientRect().left));
+  };
+  canvas.addEventListener('pointerdown', (event) => {
+    go(event);
+    canvas.setPointerCapture(event.pointerId);
+  });
+  canvas.addEventListener('pointermove', (event) => {
+    if (event.buttons) go(event);
+  });
+}
+scrubbing(strip, (x) => Math.round((x / strip.clientWidth) * (timeline.length - 1)));
+
+// --- The detail: a window of frames around the current one, one column per frame ---
+
+const detail = $('#detail');
+const GUTTER = 30;
+const ROWS = { buttons: 16, mode: 86, action: 98, sounds: 116, marks: 142, poses: 156 };
+
+function detailWindow() {
+  const size = Math.min(Number($('#zoom').value), timeline.length);
+  const from = Math.max(0, Math.min(timeline.length - size, current - Math.floor(size / 2)));
+  return [from, from + size];
+}
+
+function drawDetail() {
+  const ctx = fitCanvas(detail);
+  const [from, to] = detailWindow();
+  const cw = (detail.width - GUTTER) / (to - from);
+  const x = (f) => GUTTER + (f - from) * cw;
+  ctx.font = '10px ui-monospace, Consolas, monospace';
+  // Rows' names.
+  ctx.fillStyle = '#8a909c';
+  BUTTONS.forEach(([label], i) => ctx.fillText(label, 8, ROWS.buttons + i * 11 + 9));
+  [['mode', ROWS.mode + 8], ['act', ROWS.action + 10], ['snd', ROWS.sounds + 9], ['mark', ROWS.marks + 8], ['pose', ROWS.poses + 12]].forEach(([t, y]) => ctx.fillText(t, 0, y));
+  // The current frame; the ticks (every 3rd frame) as faint lines; a ruler every 30 frames.
+  ctx.fillStyle = 'rgba(255, 211, 77, 0.15)';
+  ctx.fillRect(x(current), 0, cw, detail.height);
+  const labels = []; // the actions' names, written over their bars once all are drawn
+  for (let f = from; f < to; f++) {
+    const entry = timeline[f];
+    if (entry.input) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+      ctx.fillRect(x(f), ROWS.buttons, 1, ROWS.poses - ROWS.buttons);
+    }
+    if (f % 30 === 0) {
+      ctx.fillStyle = '#8a909c';
+      ctx.fillText(String(f), x(f) + 2, 10);
+      ctx.fillRect(x(f), 12, 1, 4);
+    }
+    // What is held on the frame; a press of A or B the tick took after it was let go, outlined.
+    BUTTONS.forEach(([, key, color], i) => {
+      const y = ROWS.buttons + i * 11;
+      if (entry.held[key]) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x(f), y, Math.max(1, cw - 0.5), 9);
+      } else if (entry.input?.[key]) {
+        ctx.strokeStyle = color;
+        ctx.strokeRect(x(f) + 0.5, y + 0.5, Math.max(1, cw - 1.5), 8);
+      }
+    });
+    const p = entry.s.player;
+    ctx.fillStyle = MODE_COLORS[p.mode] ?? '#666';
+    ctx.fillRect(x(f), ROWS.mode, Math.ceil(cw), 8);
+    if (p.action) {
+      ctx.fillStyle = `hsl(${hash(p.action.name) % 360} 60% 40%)`;
+      ctx.fillRect(x(f), ROWS.action, Math.ceil(cw), 14);
+      const before = timeline[f - 1]?.s.player.action;
+      if (f === from || !before || before.name !== p.action.name || before.t > p.action.t) labels.push([p.action.name, x(f)]);
+    }
+    entry.sounds.forEach((s, k) => {
+      ctx.fillStyle = SOUND_COLORS[s] ?? '#fff';
+      ctx.fillRect(x(f), ROWS.sounds + 1 + k * 12, Math.max(2, cw), 9);
+      ctx.fillText(s, x(f) + Math.max(3, cw + 2), ROWS.sounds + 9 + k * 12);
+    });
+  }
+  ctx.fillStyle = '#fff';
+  labels.forEach(([text, at]) => ctx.fillText(text, at + 2, ROWS.action + 10));
+  plans[name].marks.filter(({ frame }) => frame >= from && frame < to).forEach(({ frame }) => flag(ctx, x(frame), ROWS.marks, 10));
+  // The pose on each tick, as drawn then (the current one framed).
+  const size = Math.max(12, Math.min(40, cw * FRAMES_PER_TICK - 2));
+  const currentTick = Math.floor(current / FRAMES_PER_TICK) * FRAMES_PER_TICK;
+  for (let f = from; f < to; f++) {
+    const entry = timeline[f];
+    if (!entry.input) continue;
+    if (f === currentTick) {
+      ctx.strokeStyle = '#ffd34d';
+      ctx.strokeRect(x(f) + 0.5, ROWS.poses + 0.5, size, size);
+    }
+    drawPose(ctx, entry.pose, { mirror: entry.facing === 'right', x: x(f), y: ROWS.poses, size });
+  }
+}
+
+scrubbing(detail, (px) => {
+  const [from, to] = detailWindow();
+  return from + Math.floor(((px - GUTTER) / (detail.clientWidth - GUTTER)) * (to - from));
 });
-strip.addEventListener('pointermove', (event) => {
-  if (event.buttons) seekStrip(event);
-});
-window.addEventListener('resize', drawStrip);
+window.addEventListener('resize', redraw);
 
 $('#legend').innerHTML = [
   ...Object.entries(MODE_COLORS).map(([mode, color]) => `<span><i style="background:${color}"></i>${mode}</span>`),
-  '<span>above: the action</span>',
-  ...Object.entries(SOUND_COLORS).map(([name, color]) => `<span><i style="background:${color}"></i>${name}</span>`),
+  ...Object.entries(SOUND_COLORS).map(([s, color]) => `<span><i style="background:${color}"></i>${s}</span>`),
+  `<span><i style="background:${MARK_COLOR}"></i>mark</span>`,
+  '<span><i class="outlined"></i>A/B outlined: let go before the tick, still taken by it</span>',
 ].join('');
 
-// --- The state: everything the logic keeps, what changed since the last frame marked ---
+// --- Marks: moments that look wrong, with a note ---
 
-const escape = (text) => String(text).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+function addMark(frame) {
+  const marks = plans[name].marks;
+  if (!marks.some((m) => m.frame === frame)) marks.push({ frame, note: '' });
+  marks.sort((a, b) => a.frame - b.frame);
+  save();
+  fillPlans(name);
+  showMarks(frame);
+  redraw();
+}
+
+function jumpMark(dir) {
+  const marks = plans[name].marks;
+  const next = dir > 0 ? marks.find((m) => m.frame > current) : [...marks].reverse().find((m) => m.frame < current);
+  if (next) seek(next.frame);
+}
+
+function showMarks(focus) {
+  const marks = plans[name].marks;
+  $('#mark-list').replaceChildren(...marks.map((m) => {
+    const item = document.createElement('li');
+    item.className = 'mark-item';
+    item.dataset.frame = String(m.frame);
+    const go = Object.assign(document.createElement('button'), { type: 'button', textContent: `⚑ ${m.frame}` });
+    go.title = `frame ${m.frame}, tick ${Math.floor(m.frame / FRAMES_PER_TICK)}`;
+    go.addEventListener('click', () => {
+      pause();
+      seek(m.frame);
+    });
+    const note = Object.assign(document.createElement('input'), { type: 'text', value: m.note, placeholder: 'what looks wrong here' });
+    note.addEventListener('input', () => {
+      m.note = note.value;
+      save();
+    });
+    const remove = Object.assign(document.createElement('button'), { type: 'button', textContent: '×', title: 'Remove the mark' });
+    remove.addEventListener('click', () => {
+      marks.splice(marks.indexOf(m), 1);
+      save();
+      fillPlans(name);
+      showMarks();
+      redraw();
+    });
+    item.append(go, note, remove);
+    if (m.frame === focus) queueMicrotask(() => note.focus());
+    return item;
+  }));
+  $('#marks-empty').hidden = marks.length > 0;
+}
+
+$('#mark').addEventListener('click', () => addMark(current));
+$('#mark-prev').addEventListener('click', () => jumpMark(-1));
+$('#mark-next').addEventListener('click', () => jumpMark(1));
+
+// --- Reports: the plan and its marks, to paste into an issue or a chat, or as a test plan ---
+
+function report() {
+  const { frames, plan, marks } = plans[name];
+  return {
+    plan: name, frames, inputs: plan,
+    marks: marks.map(({ frame, note }) => {
+      const { s, pose } = timeline[frame];
+      const { player: p, ball: b } = s;
+      return {
+        frame, tick: Math.floor(frame / FRAMES_PER_TICK), note, pose: POSE_NAMES[pose],
+        player: {
+          x: p.x, z: p.z, vx: p.vx, vz: p.vz, facing: p.facing, mode: p.mode,
+          action: p.action && `${p.action.name} ${p.action.t}`, hasBall: p.hasBall, onBall: p.onBall, trapping: p.trapping,
+        },
+        ball: { x: b.x, z: b.z, vx: b.vx, vz: b.vz },
+      };
+    }),
+  };
+}
+
+async function copy(text, what) {
+  try {
+    await navigator.clipboard.writeText(text);
+    $('#copied').textContent = `${what} copied`;
+  } catch {
+    $('#plan-text').value = text;
+    $('#plan-text').closest('details').open = true;
+    $('#copied').textContent = `${what} is in the box under Edit plan (copying was not allowed)`;
+  }
+  setTimeout(() => ($('#copied').textContent = ''), 5000);
+}
+
+$('#copy-report').addEventListener('click', () => copy(JSON.stringify(report(), null, 1), 'Report'));
+$('#copy-test').addEventListener('click', () => {
+  const { frames, plan, marks } = plans[name];
+  const notes = marks.filter((m) => m.note).map((m) => `  // frame ${m.frame}: ${m.note}\n`).join('');
+  const key = name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
+  const inputs = plan.map(([a, b, keys]) => `[${a}, ${b}, '${keys}']`).join(', ');
+  copy(`${notes}  '${key}': [${frames}, [${inputs}]],\n`, 'Plan for tests/plans.mjs');
+});
+
+// --- The state: everything the logic keeps, what changed since the last frame marked ---
 
 function value(v) {
   if (v === null) return '—';
@@ -267,16 +551,18 @@ function actionText(a) {
 }
 
 function showState(entry, prevEntry) {
-  const { s, pose, facing, input, sounds } = entry;
+  const { s, pose, facing, held, input, sounds } = entry;
   const prev = prevEntry?.s;
   const { player, ball, ...practice } = s;
-  const pressed = input ? Object.entries(input).filter(([, v]) => v).map(([k]) => k) : null;
+  const tags = (list) => list.map((k) => `<span>${k}</span>`).join('') || '—';
+  const heldList = BUTTONS.filter(([, key]) => held[key]).map(([label]) => label);
+  const tickList = input ? BUTTONS.filter(([, key]) => input[key]).map(([label]) => label) : null;
   $('#state').innerHTML = `
     <h3>This frame</h3>
     <dl>
-      <dt>tick</dt><dd>${input ? 'yes' : 'no (between ticks)'}</dd>
-      <dt>input</dt><dd class="tags">${pressed ? pressed.map((k) => `<span>${k}</span>`).join('') || '—' : '—'}</dd>
-      <dt>sounds</dt><dd class="tags">${sounds.map((k) => `<span>${k}</span>`).join('') || '—'}</dd>
+      <dt>held</dt><dd class="tags">${tags(heldList)}</dd>
+      <dt>tick</dt><dd class="tags">${tickList ? tags(tickList) : 'between ticks'}</dd>
+      <dt>sounds</dt><dd class="tags">${tags(sounds)}</dd>
       <dt>pose</dt><dd>${pose} ${POSE_NAMES[pose] ?? ''} (${facing})</dd>
       <dt>action</dt><dd>${escape(actionText(player.action))}</dd>
     </dl>
@@ -285,7 +571,7 @@ function showState(entry, prevEntry) {
     <h3>Practice</h3><dl>${fields(practice, prev ? (({ player: _p, ball: _b, ...rest }) => rest)(prev) : null, ['sounds'])}</dl>`;
 }
 
-// --- Recording from the keyboard ---
+// --- Recording from the keyboard; M marks the moment ---
 
 let recording = null;
 
@@ -301,7 +587,7 @@ function heldNow(r) {
 
 function startRecording() {
   pause();
-  recording = { run: createRun(), held: [], down: new Set(), pressed: new Set(), last: performance.now(), carry: 0 };
+  recording = { run: createRun(), held: [], marks: [], down: new Set(), pressed: new Set(), last: performance.now(), carry: 0 };
   $('#record').textContent = '■ Stop';
   $('#recording').hidden = false;
   overlay.clearRect(0, 0, overlay.canvas.width, overlay.canvas.height);
@@ -320,13 +606,14 @@ function recordLoop(now) {
     const held = heldNow(r);
     r.held.push(held);
     info = stepFrame(r.run, held);
-    if (info.input && $('#sound').checked) r.run.s.sounds.forEach((name) => sound.play(name));
+    if (info.input && $('#sound').checked) r.run.s.sounds.forEach((n) => sound.play(n));
     r.carry -= 1;
   }
   if (info) {
     render.clear();
     render.player(r.run.s.player.x, r.run.s.player.z, info.pose, info.facing);
     render.ball(r.run.s.ball.x, r.run.s.ball.z, r.run.s.ball.frame);
+    $('#recording').textContent = `● REC ${(r.held.length / 60).toFixed(1)} s${r.marks.length ? ` ⚑${r.marks.length}` : ''}`;
   }
   if (r.held.length >= MAX_RECORD_FRAMES) stopRecording();
   else requestAnimationFrame(recordLoop);
@@ -337,11 +624,7 @@ function stopRecording() {
   recording = null;
   $('#record').textContent = '● Record';
   $('#recording').hidden = true;
-  if (!r || !r.held.length) return;
-  const name = `recorded ${new Date().toLocaleTimeString()}`;
-  plans[name] = { frames: r.held.length, plan: planOf(r.held) };
-  fillPlans(name);
-  load(name);
+  if (r?.held.length) addPlan('recorded', r.held.length, planOf(r.held), r.marks);
 }
 
 $('#record').addEventListener('click', () => (recording ? stopRecording() : startRecording()));
@@ -350,6 +633,9 @@ window.addEventListener('keydown', (event) => {
   if (event.code === 'Escape') {
     event.preventDefault();
     stopRecording();
+  } else if (event.code === 'KeyM') {
+    // Half a second back: what made one press M is a moment gone already.
+    if (!event.repeat) recording.marks.push({ frame: Math.max(0, recording.held.length - 30), note: '' });
   } else if (KEYS[event.code]) {
     event.preventDefault();
     recording.down.add(event.code);
@@ -359,120 +645,15 @@ window.addEventListener('keydown', (event) => {
 window.addEventListener('keyup', (event) => recording?.down.delete(event.code));
 window.addEventListener('blur', () => recording?.down.clear());
 
-// --- Poses, animations and actions ---
-
-const poseCanvas = (() => {
-  const cache = new Map();
-  return (index, mirror) => {
-    const key = `${index}${mirror}`;
-    if (!cache.has(key)) {
-      const { parts, width, height } = PLAYER_POSES[index];
-      cache.set(key, paintParts(parts, width, height, PALETTES.player, mirror));
-    }
-    return cache.get(key);
-  };
-})();
-const BOX = Math.max(...PLAYER_POSES.map((p) => Math.max(p.width, p.height)));
-
-function drawPose(canvas, index, mirror = false) {
-  const ctx = canvas.getContext('2d');
-  canvas.width = BOX;
-  canvas.height = BOX;
-  ctx.clearRect(0, 0, BOX, BOX);
-  const sprite = poseCanvas(index, mirror);
-  ctx.drawImage(sprite, Math.floor((BOX - sprite.width) / 2), BOX - sprite.height);
-}
-
-$('#poses').append(...PLAYER_POSES.map((_, i) => {
-  const card = document.createElement('div');
-  card.className = 'pose';
-  const left = document.createElement('canvas');
-  const right = document.createElement('canvas');
-  drawPose(left, i, false);
-  drawPose(right, i, true);
-  const row = document.createElement('div');
-  row.style.display = 'flex';
-  row.append(left, right);
-  card.append(row, `${i} ${POSE_NAMES[i] ?? ''}`);
-  return card;
-}));
-
-$('#animations').innerHTML = Object.entries(ANIMATIONS).map(([name, { poses, frames }]) => (
-  `<p><b>${name}</b>: ${poses.map((i) => `${POSE_NAMES[i]}`).join(' → ')}, ${frames} frames each</p>`
-)).join('');
-
-function actionTicks(name) {
-  const def = ACTIONS[name];
-  const out = [];
-  for (const [pose, ticks] of def.steps) for (let i = 0; i < ticks; i++) out.push(pose);
-  return out.map((pose, t) => {
-    const labels = [];
-    if (def.events[t]) labels.push(def.events[t]);
-    if (def.strike && t > 0) labels.push(`strike`);
-    const hit = def.hits && t >= def.hits.from && t <= def.hits.to && !def.hits.skip?.includes(t);
-    if (hit) labels.push(def.hits.event);
-    return { pose, t, labels, hit };
-  });
-}
-
-let preview = null;
-
-$('#actions').append(...Object.keys(ACTIONS).map((name) => {
-  const row = document.createElement('div');
-  row.className = 'action';
-  const def = ACTIONS[name];
-  const extra = ['decel', 'inputFrom', 'abFrom', 'steerFrom'].filter((k) => def[k] !== undefined).map((k) => `${k} ${def[k]}`);
-  if (def.speeds) extra.push(`speeds ${def.speeds.join(' ')}`);
-  const title = document.createElement('b');
-  title.innerHTML = `${name}<br><small>${actionTicks(name).length} ticks${extra.length ? `<br>${extra.join('<br>')}` : ''}</small>`;
-  const cells = document.createElement('div');
-  cells.className = 'cells';
-  cells.append(...actionTicks(name).map(({ pose, t, labels, hit }) => {
-    const cell = document.createElement('div');
-    cell.className = `cell${hit ? ' hit' : ''}`;
-    const canvas = document.createElement('canvas');
-    drawPose(canvas, pose, true);
-    cell.append(canvas, `${t} ${POSE_NAMES[pose]}`);
-    if (labels.length) {
-      const event = document.createElement('div');
-      event.className = 'event';
-      event.textContent = labels.join(' ');
-      cell.append(event);
-    }
-    return cell;
-  }));
-  row.append(title, cells);
-  row.addEventListener('click', () => {
-    document.querySelectorAll('.action.selected').forEach((r) => r.classList.remove('selected'));
-    row.classList.add('selected');
-    preview = { ticks: actionTicks(name), start: performance.now() };
-    $('#action-name').textContent = name;
-    requestAnimationFrame(previewLoop);
-  });
-  return row;
-}));
-
-function previewLoop(now) {
-  if (!preview || $('#gallery').hidden) return;
-  // A tick is 3 frames; a pause of a few ticks between the loops.
-  const tick = Math.floor((now - preview.start) / (FRAME_MS * FRAMES_PER_TICK)) % (preview.ticks.length + 6);
-  const canvas = $('#action-preview');
-  if (tick < preview.ticks.length) drawPose(canvas, preview.ticks[tick].pose, true);
-  requestAnimationFrame(previewLoop);
-}
-
 // --- Sounds ---
 
-$('#sfx').append(...Object.keys(SOUND_DATA.sfx).flatMap((name) => {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.textContent = `▶ ${name}`;
+$('#sfx').append(...Object.keys(SOUND_DATA.sfx).flatMap((n) => {
+  const button = Object.assign(document.createElement('button'), { type: 'button', textContent: `▶ ${n}` });
   button.addEventListener('click', () => {
     sound.start();
-    sound.play(name);
+    sound.play(n);
   });
-  const note = document.createElement('span');
-  note.textContent = SOUND_NOTES[name] ?? '';
+  const note = Object.assign(document.createElement('span'), { textContent: SOUND_NOTES[n] ?? '' });
   return [button, note];
 }));
 
@@ -486,5 +667,17 @@ $('#music').addEventListener('click', () => {
 
 // --- Start ---
 
+catalog = initCatalog({
+  list: $('#catalog-list'),
+  detail: $('#catalog-detail'),
+  showInTimeline: (planName, frame) => {
+    showTab('timeline');
+    fillPlans(planName);
+    load(planName);
+    seek(frame);
+  },
+});
+restore();
 fillPlans('juggle');
 load('juggle');
+catalog.select('action:lift');

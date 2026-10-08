@@ -108,7 +108,7 @@ original cartridge** at `rom/nsl-jp.nes` (git-ignored; no ROM is part of this re
 | `tools/check_replay.mjs`     | replays recorded play sessions through the game logic and compares with RAM  |
 | `tools/gen_sprites.py`       | builds `js/art/sprites.js` from the frame dumps and a PPU snapshot           |
 | `tools/gen_favicon.mjs`      | draws the favicon and the home screen icons (`icons/`) from the ball sprite  |
-| `tools/inspector/`           | a page to look into the game: a plan (from `tests/plans.mjs`, edited, or recorded from the keyboard) frame by frame with the whole state, every pose, action and sound; serve the repository and open `/tools/inspector/` (not published) |
+| `tools/inspector/`           | a page to look into the game: a plan (from `tests/plans.mjs`, edited, or recorded from the keyboard) frame by frame with the whole state and the buttons, poses and sounds around it; marks with notes on what looks wrong, copied out as a report or a test plan; every action, animation and pose; serve the repository and open `/tools/inspector/` (not published) |
 | `tools/check_preload.mjs`    | keeps the `modulepreload` list in `index.html` in step with the imports (`--write` to update; the Pages workflow checks it) |
 | `tools/record_gif.mjs`       | records a GIF of the screen from the game logic on a scripted input plan; with `--preview`, `preview.png` |
 

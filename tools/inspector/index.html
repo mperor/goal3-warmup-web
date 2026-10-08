@@ -20,12 +20,17 @@
     <section id="timeline" class="tab" aria-label="Timeline">
       <div class="toolbar">
         <label>Plan <select id="plan"></select></label>
-        <button type="button" id="record" title="Play with the keyboard (arrows, X = A, Z = B, Space = A+B); Esc or the button stops">● Record</button>
+        <button type="button" id="record" title="Play with the keyboard: arrows, X = A, Z = B, Space = A+B; M marks the moment; Esc or the button stops">● Record</button>
+        <button type="button" id="delete" title="Delete this recorded or edited plan">Delete</button>
+        <button type="button" id="copy-report" title="The plan, its marks and the state at each, as JSON to paste into an issue or a chat">Copy report</button>
+        <button type="button" id="copy-test" title="The plan as a line for tests/plans.mjs, with the marks' notes">Copy as test plan</button>
+        <span id="copied" class="copied" role="status"></span>
         <details class="plan-text">
           <summary>Edit plan</summary>
           <textarea id="plan-text" spellcheck="false" rows="6"></textarea>
           <button type="button" id="plan-run">Run this plan</button>
-          <p class="hint">[from, to, buttons] in frames; buttons from L R U D A B.</p>
+          <span id="plan-error" class="error"></span>
+          <p class="hint">{ frames, plan: [[from, to, buttons], ...] }: frames from the start, buttons from L R U D A B.</p>
         </details>
       </div>
 
@@ -51,26 +56,37 @@
               <option value="0.1">⅒×</option>
             </select></label>
             <label><input type="checkbox" id="sound"> Sound</label>
-            <label><input type="checkbox" id="marks" checked> Marks</label>
+            <label><input type="checkbox" id="marks" checked> Labels</label>
             <span id="position" class="position"></span>
           </div>
           <input type="range" id="frame" min="0" max="0" value="0" aria-label="Frame">
-          <canvas id="strip" height="54" aria-label="Ticks: mode, action, sounds"></canvas>
+          <canvas id="strip" height="50" aria-label="The whole plan: presses, sounds, action, mode, marks"></canvas>
+          <div class="detail-bar">
+            <span>Around the frame:</span>
+            <label><select id="zoom">
+              <option value="45">45 frames</option>
+              <option value="90" selected>90 frames</option>
+              <option value="180">180 frames</option>
+            </select></label>
+          </div>
+          <canvas id="detail" height="200" aria-label="Frames around the current one: buttons held, mode, action, sounds, marks, poses"></canvas>
           <p class="legend" id="legend"></p>
+
+          <h3 class="marks-title">Marks
+            <button type="button" id="mark" title="Mark this frame (M)">⚑ Mark here</button>
+            <button type="button" id="mark-prev" title="Previous mark ([)">◀ ⚑</button>
+            <button type="button" id="mark-next" title="Next mark (])">⚑ ▶</button>
+          </h3>
+          <p id="marks-empty" class="hint">No marks yet: M (or the button) marks the frame shown, and while recording the moment half a second back. Note what looks wrong; Copy report takes the plan with the marks.</p>
+          <ol id="mark-list" class="mark-list"></ol>
         </div>
         <aside id="state" class="state" aria-label="State"></aside>
       </div>
     </section>
 
-    <section id="gallery" class="tab" aria-label="Poses and actions" hidden>
-      <h2>Actions</h2>
-      <p class="hint">Click an action to play it. One cell per tick; the events it sends to the ball under it, its hit window shaded.</p>
-      <div class="preview"><canvas id="action-preview" width="64" height="64"></canvas><span id="action-name"></span></div>
-      <div id="actions"></div>
-      <h2>Animations</h2>
-      <div id="animations"></div>
-      <h2>Poses</h2>
-      <div id="poses" class="poses"></div>
+    <section id="gallery" class="tab catalog" aria-label="Poses and actions" hidden>
+      <nav id="catalog-list" class="catalog-list" aria-label="Actions, animations and poses"></nav>
+      <div id="catalog-detail" class="catalog-detail"></div>
     </section>
 
     <section id="sounds" class="tab" aria-label="Sounds" hidden>
