@@ -1,2 +1,90 @@
 # goal3-warmup-web
-A web-based interactive prototype inspired by the classic warm-up scene from Kunio-kun no Nekketsu Soccer League (Goal 3). The project recreates the retro gameplay experience while presenting it as part of a modern interactive website.
+
+The ball-practice warm-up screen of *Kunio-kun no Nekketsu Soccer League* (くにおくんの熱血サッカーリーグ,
+Technōs Japan, Famicom, 1993; known as *Goal 3*), rebuilt for the web as a fan tribute. The player
+and the ball follow the original's rules, checked frame by frame against recordings of the original
+running in an emulator, and the music and sound effects are played by an emulated NES sound chip.
+
+Plain HTML, CSS and JavaScript modules: no build step, no dependencies.
+
+## Running
+
+The page loads JavaScript modules and an audio worklet, which browsers do not allow from `file://`.
+Serve the folder over HTTP, for example:
+
+```sh
+npx serve .
+# or
+py -m http.server
+```
+
+and open the address it prints.
+
+## Controls
+
+| Key        | Famicom | Action                     |
+|------------|---------|----------------------------|
+| Left Right | ←→      | move (tap twice: run)      |
+| Up Down    | ↑↓      | move up and down the pitch |
+| X          | A       | pass, kick                 |
+| Z          | B       | shoot, dive                |
+| Space      | A+B     | jump                       |
+| Esc        |         | the menu window            |
+| M          |         | sound on / off             |
+
+## Layout
+
+```
+index.html, css/       the scene
+js/game/               player and ball logic, input, the fixed-step loop, rendering
+js/audio/              NES sound chip (APU) emulation in an AudioWorklet, the captured song and effects
+js/art/                sprites, the title logo and the press-start prompt as pixel data
+js/pixel-*.js          bitmap text and pixel art rendering
+fonts/                 local fonts (SIL OFL 1.1)
+docs/reference/        reference images and the Mesen movie the tools start from
+tools/                 the tools that capture data from the original and check the game against it
+```
+
+## Tools
+
+The data in `js/art/` and `js/audio/sound-data.js` is generated from the original game, and the game
+logic is compared with it. None of this is needed to run the page. The tools need Node.js 18+,
+Python 3.10+ (stdlib only), [Mesen 2.2.1](https://www.mesen.ca/) and **your own dump of the
+original cartridge** at `rom/nsl-jp.nes` (git-ignored; no ROM is part of this repository).
+
+| Tool                         | What it does                                                                 |
+|------------------------------|------------------------------------------------------------------------------|
+| `tools/simulate.py`          | plays input plans on the original in Mesen (headless), from `docs/reference/movies/nsl-jp.mmo` |
+| `tools/compare_sim.mjs`      | runs the same plans through the game logic and reports where they differ     |
+| `tools/capture_audio.py`     | captures the music and effects from the original, writes `js/audio/sound-data.js` |
+| `tools/render_audio.mjs`     | renders the captured sound to WAV files, to listen outside the browser       |
+| `tools/mesen/*.lua`          | Mesen scripts: frame dumps of RAM and OAM, PPU snapshots, sound chip logs    |
+| `tools/export_trace.py`      | exports frame dumps in `tools/data/` as JSON for `tools/check_replay.mjs`   |
+| `tools/check_replay.mjs`     | replays recorded play sessions through the game logic and compares with RAM  |
+| `tools/gen_sprites.py`       | builds `js/art/sprites.js` from the frame dumps and a PPU snapshot           |
+| `tools/gen_favicon.mjs`      | draws the favicon from the ball sprite                                       |
+
+The play-session recordings in `tools/data/` are local and not committed; record your own with
+`tools/mesen/frame-dump.lua` and `tools/mesen/export-screen.lua` (see `tools/recording.py`).
+Generated files go to `tools/.cache/` (git-ignored).
+
+## Legal
+
+This is a non-commercial fan project, not affiliated with or endorsed by the rights holders.
+*Kunio-kun no Nekketsu Soccer League* and its characters, graphics, music and sound belong to
+their owners; the Kunio-kun series has belonged to Arc System Works since 2015.
+
+The following is derived from the original game and is **not** covered by this project's license:
+
+- `js/art/sprites.js`: the player, ball and shadow sprites
+- `js/art/title-logo.js`, `js/art/press-start.js`: the title logo and prompt, traced from the original screen
+- `js/audio/sound-data.js`: the music and sound effects, as sound chip register writes
+- `docs/reference/`: screenshots of the original and an input recording for it
+- the title text and the copyright line of the original's title screen in `index.html`
+
+If you hold rights to this material and want it removed, please open an issue.
+
+The source code is under the [MIT License](LICENSE). The fonts in `fonts/` are
+[DotGothic16](https://github.com/fontworks-fonts/DotGothic16) (cut down to the characters used) and
+[Press Start 2P](https://github.com/google/fonts/tree/main/ofl/pressstart2p) (unmodified), both under the
+SIL Open Font License 1.1 (`fonts/OFL-*.txt`).
