@@ -38,6 +38,20 @@ export function setupMenu({ menu, close, sound }) {
     sound.start();
   });
 
+  // In a hidden tab the game stops (no animation frames), so the sound stops with it.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) sound.pause();
+    else if (!menu.open) sound.resume();
+  });
+
+  // The keys go by their place on the keyboard (Z is Y on a German one): show what they say there.
+  navigator.keyboard?.getLayoutMap?.().then((layout) => {
+    menu.querySelectorAll('[data-key]').forEach((el) => {
+      const label = layout.get(el.dataset.key);
+      if (label) el.textContent = label.toUpperCase();
+    });
+  }).catch(() => {});
+
   menu.showModal();
   return {
     paused: () => menu.open,

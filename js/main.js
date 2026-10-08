@@ -6,9 +6,12 @@ import { createInput } from './game/input.js';
 import { setupMenu } from './menu.js';
 import { renderPixelArt } from './pixel-art.js';
 import { renderPixelText } from './pixel-font.js';
+import { snapScale } from './scale.js';
 import { setupFullscreen, setupTouch } from './touch.js';
 
 const ART = { 'title-logo': TITLE_LOGO, 'press-start': PRESS_START };
+
+snapScale();
 
 document.querySelectorAll('[data-pixel-art]').forEach((el) => renderPixelArt(el, ART[el.dataset.pixelArt]));
 document.querySelectorAll('[data-pixel-text]').forEach(renderPixelText);
