@@ -1,4 +1,11 @@
-# goal3-warmup-web
+# goal3-warmup-web ⚽
+
+[![Play the demo](https://img.shields.io/badge/%E2%96%B6%20play-demo-155fd9?style=flat-square)](https://mperor.github.io/goal3-warmup-web/)
+[![Version](https://img.shields.io/github/v/tag/mperor/goal3-warmup-web?style=flat-square&label=version&color=155fd9)](https://github.com/mperor/goal3-warmup-web/tags)
+[![Pages](https://img.shields.io/github/actions/workflow/status/mperor/goal3-warmup-web/pages.yml?branch=master&style=flat-square&label=pages)](https://github.com/mperor/goal3-warmup-web/actions/workflows/pages.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-155fd9?style=flat-square)](LICENSE)
+![No dependencies](https://img.shields.io/badge/dependencies-none-155fd9?style=flat-square)
+![Keyboard, gamepad, touch](https://img.shields.io/badge/controls-keyboard%20%C2%B7%20gamepad%20%C2%B7%20touch-155fd9?style=flat-square)
 
 ![The warm-up screen, as the page draws it](preview.png)
 
@@ -7,11 +14,11 @@ Technōs Japan, Famicom, 1993; known as *Goal 3*), rebuilt for the web as a fan 
 and the ball follow the original's rules, checked frame by frame against recordings of the original
 running in an emulator, and the music and sound effects are played by an emulated NES sound chip.
 
-**Play it: https://mperor.github.io/goal3-warmup-web/**
+**🎮 Play it: https://mperor.github.io/goal3-warmup-web/**
 
 Plain HTML, CSS and JavaScript modules: no build step, no dependencies.
 
-## Running
+## ▶️ Running
 
 The page loads JavaScript modules and an audio worklet, which browsers do not allow from `file://`.
 Serve the folder over HTTP, for example:
@@ -25,7 +32,7 @@ py -m http.server
 and open the address it prints. Every push to `master` publishes the page on GitHub Pages
 (`.github/workflows/pages.yml`).
 
-## Controls
+## 🕹️ Controls
 
 | Key        | Famicom | Action                     |
 |------------|---------|----------------------------|
@@ -45,7 +52,7 @@ there, so a stray touch on the scene does not), with a short buzz on A and B whe
 full screen switch, and added to the home screen the page opens full screen and sideways
 (`manifest.webmanifest`; on an iPhone the only way to lose the browser's bars).
 
-## Layout
+## 🗂️ Layout
 
 ```
 index.html, css/       the scene
@@ -60,7 +67,7 @@ docs/reference/        reference images and the Mesen movie the tools start from
 tools/                 the tools that capture data from the original and check the game against it
 ```
 
-## Tools
+## 🛠️ Tools
 
 The data in `js/art/` and `js/audio/sound-data.js` is generated from the original game, and the game
 logic is compared with it. None of this is needed to run the page. The tools need Node.js 18+,
@@ -85,7 +92,7 @@ The play-session recordings in `tools/data/` are local and not committed; record
 `tools/mesen/frame-dump.lua` and `tools/mesen/export-screen.lua` (see `tools/recording.py`).
 Generated files go to `tools/.cache/` (git-ignored).
 
-## Legal
+## ⚖️ Legal
 
 This is a non-commercial fan project, not affiliated with or endorsed by the rights holders.
 *Kunio-kun no Nekketsu Soccer League* and its characters, graphics, music and sound belong to
