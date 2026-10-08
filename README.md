@@ -73,7 +73,7 @@ The data in `js/art/` and `js/audio/sound-data.js` is generated from the origina
 logic is compared with it. None of this is needed to run the page. The tools need Node.js 18+,
 Python 3.10+ (stdlib only), [Mesen 2.2.1](https://www.mesen.ca/) and **your own dump of the
 original cartridge** at `rom/nsl-jp.nes` (git-ignored; no ROM is part of this repository).
-`tools/record_gif.mjs`, `tools/render_audio.mjs` and `tools/gen_favicon.mjs` only need Node.js.
+`tools/record_gif.mjs`, `tools/render_audio.mjs`, `tools/gen_favicon.mjs` and `tools/check_preload.mjs` only need Node.js.
 
 | Tool                         | What it does                                                                 |
 |------------------------------|------------------------------------------------------------------------------|
@@ -86,6 +86,7 @@ original cartridge** at `rom/nsl-jp.nes` (git-ignored; no ROM is part of this re
 | `tools/check_replay.mjs`     | replays recorded play sessions through the game logic and compares with RAM  |
 | `tools/gen_sprites.py`       | builds `js/art/sprites.js` from the frame dumps and a PPU snapshot           |
 | `tools/gen_favicon.mjs`      | draws the favicon and the home screen icons (`icons/`) from the ball sprite  |
+| `tools/check_preload.mjs`    | keeps the `modulepreload` list in `index.html` in step with the imports (`--write` to update; the Pages workflow checks it) |
 | `tools/record_gif.mjs`       | records a GIF of the screen from the game logic on a scripted input plan; with `--preview`, `preview.png` |
 
 The play-session recordings in `tools/data/` are local and not committed; record your own with
