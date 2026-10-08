@@ -1,0 +1,167 @@
+   0 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0 | pickup
+   3 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+   6 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+   9 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  12 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  15 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  18 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  21 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  24 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  27 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  30 A   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  33 A   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  36 -   P 121 0 walk/pass r pose 21r ball | B 133 0 v 0 0 f0
+  39 -   P 121 0 walk/pass r pose 21r ball | B 133 0 v 0 0 f0
+  42 -   P 121 0 walk/pass r pose 21r ball | B 133 0 v 0 0 f0
+  45 -   P 121 0 walk/pass r pose 21r ball | B 133 0 v 0 0 f0
+  48 -   P 121 0 walk/pass r pose 8r | B 136 8 v 3 7.500 f0 | kick
+  51 -   P 121 0 walk/pass r pose 8r | B 139 15.500 v 3 7 f4
+  54 -   P 121 0 walk/pass r pose 8r | B 142 22.500 v 3 6.500 f4
+  57 -   P 121 0 walk/pass r pose 8r | B 145 29 v 3 6 f1
+  60 -   P 121 0 walk/pass r pose 8r | B 148 35 v 3 5.500 f1
+  63 -   P 121 0 walk r pose 0r | B 151 40.500 v 3 5 f5
+  66 -   P 121 0 walk r pose 0r | B 154 45.500 v 3 4.500 f5
+  69 -   P 121 0 walk r pose 0r | B 157 50 v 3 4 f3
+  72 -   P 121 0 walk r pose 0r | B 160 54 v 3 3.500 f3
+  75 -   P 121 0 walk r pose 0r | B 163 57.500 v 3 3 f4
+  78 -   P 121 0 walk r pose 0r | B 166 60.500 v 3 2.500 f4
+  81 -   P 121 0 walk r pose 0r | B 169 63 v 3 2 f1
+  84 -   P 121 0 walk r pose 0r | B 172 65 v 3 1.500 f1
+  87 -   P 121 0 walk r pose 0r | B 175 66.500 v 3 1 f5
+  90 -   P 121 0 walk r pose 0r | B 178 67.500 v 3 0.500 f5
+  93 -   P 121 0 walk r pose 0r | B 181 68 v 3 0 f3
+  96 -   P 121 0 walk r pose 0r | B 184 68 v 3 -0.500 f3
+  99 -   P 121 0 walk r pose 0r | B 187 67.500 v 3 -1 f4
+ 102 -   P 121 0 walk r pose 0r | B 190 66.500 v 3 -1.500 f4
+ 105 -   P 121 0 walk r pose 0r | B 193 65 v 3 -2 f1
+ 108 -   P 121 0 walk r pose 0r | B 196 63 v 3 -2.500 f1
+ 111 -   P 121 0 walk r pose 0r | B 199 60.500 v 3 -3 f5
+ 114 -   P 121 0 walk r pose 0r | B 202 57.500 v 3 -3.500 f5
+ 117 -   P 121 0 walk r pose 0r | B 205 54 v 3 -4 f3
+ 120 -   P 121 0 walk r pose 0r | B 208 50 v 3 -4.500 f3
+ 123 -   P 121 0 walk r pose 0r | B 211 45.500 v 3 -5 f4
+ 126 -   P 121 0 walk r pose 0r | B 214 40.500 v 3 -5.500 f4
+ 129 -   P 121 0 walk r pose 0r | B 217 35 v 3 -6 f1
+ 132 -   P 121 0 walk r pose 0r | B 220 29 v 3 -6.500 f1
+ 135 -   P 121 0 walk r pose 0r | B 223 22.500 v 3 -7 f5
+ 138 -   P 121 0 walk r pose 0r | B 226 15.500 v 3 -7.500 f5
+ 141 -   P 121 0 walk r pose 0r | B 229 8 v 3 -8 f3
+ 144 -   P 121 0 walk r pose 0r | B 232 0 v 3 -8.500 f3
+ 147 -   P 121 0 walk r pose 0r | B 235 0.500 v 3 -9 f4
+ 150 -   P 121 0 walk r pose 0r | B 237.719 3.996 v 2.719 2.996 f4 | bounce
+ 153 -   P 121 0 walk r pose 0r | B 240.438 6.992 v 2.719 2.496 f1
+ 156 -   P 121 0 walk r pose 0r | B 243.156 9.488 v 2.719 1.996 f1
+ 159 -   P 121 0 walk r pose 0r | B 245.875 11.484 v 2.719 1.496 f5
+ 162 -   P 121 0 walk r pose 0r | B 248.594 12.980 v 2.719 0.996 f5
+ 165 -   P 121 0 walk r pose 0r | B 251.313 13.977 v 2.719 0.496 f3
+ 168 -   P 121 0 walk r pose 0r | B 254.031 14.473 v 2.719 -0.004 f3
+ 171 -   P 121 0 walk r pose 0r | B 256.750 14.469 v 2.719 -0.504 f4
+ 174 -   P 121 0 walk r pose 0r | B 254.750 16.965 v -2 1.996 f4
+ 177 -   P 121 0 walk r pose 0r | B 252.750 18.961 v -2 1.496 f4
+ 180 -   P 121 0 walk r pose 0r | B 250.750 20.457 v -2 0.996 f2
+ 183 -   P 121 0 walk r pose 0r | B 248.750 21.453 v -2 0.496 f2
+ 186 -   P 121 0 walk r pose 0r | B 246.750 21.949 v -2 -0.004 f2
+ 189 -   P 121 0 walk r pose 0r | B 244.750 21.945 v -2 -0.504 f1
+ 192 -   P 121 0 walk r pose 0r | B 242.750 21.441 v -2 -1.004 f1
+ 195 -   P 121 0 walk r pose 0r | B 240.750 20.438 v -2 -1.504 f1
+ 198 -   P 121 0 walk r pose 0r | B 238.750 18.934 v -2 -2.004 f0
+ 201 R   P 123.313 0 walk r pose 1r | B 236.750 16.930 v -2 -2.504 f0
+ 204 R   P 125.625 0 walk r pose 1r | B 234.750 14.426 v -2 -3.004 f0
+ 207 R   P 127.938 0 walk r pose 0r | B 232.750 11.422 v -2 -3.504 f3
+ 210 R   P 130.250 0 walk r pose 0r | B 230.750 7.918 v -2 -4.004 f3
+ 213 R   P 132.563 0 walk r pose 2r | B 228.750 3.914 v -2 -4.504 f3
+ 216 R   P 134.875 0 walk r pose 2r | B 226.750 0.410 v -2 -5.004 f2
+ 219 R   P 137.188 0 walk r pose 0r | B 224.938 1.910 v -1.813 0.998 f2 | bounce
+ 222 R   P 139.500 0 walk r pose 0r | B 223.125 2.910 v -1.813 0.498 f2
+ 225 R   P 141.813 0 walk r pose 1r | B 221.313 3.410 v -1.813 -0.002 f1
+ 228 R   P 144.125 0 walk r pose 1r | B 219.500 3.410 v -1.813 -0.502 f1
+ 231 R   P 146.438 0 walk r pose 0r | B 217.688 2.910 v -1.813 -1.002 f1
+ 234 R   P 148.750 0 walk r pose 0r | B 215.875 1.910 v -1.813 -1.502 f0
+ 237 R   P 151.063 0 walk r pose 2r | B 214.063 0.410 v -1.813 -2.002 f0
+ 240 R   P 153.375 0 walk r pose 2r | B 212.250 0.410 v -1.813 -2.502 f0
+ 243 R   P 155.688 0 walk r pose 0r | B 210.609 0.656 v -1.641 -0.253 f3 | bounce
+ 246 R   P 158 0 walk r pose 0r | B 208.969 0.402 v -1.641 -0.753 f3
+ 249 R   P 160.313 0 walk r pose 1r | B 207.328 0.648 v -1.641 -1.253 f3
+ 252 R   P 162.625 0 walk r pose 1r | B 207.328 0.648 v -1.480 0 f3
+ 255 R   P 164.938 0 walk r pose 0r | B 205.988 0.648 v -1.340 0 f2
+ 258 R   P 167.250 0 walk r pose 0r | B 204.777 0.648 v -1.211 0 f2
+ 261 R   P 169.563 0 walk r pose 2r | B 203.684 0.648 v -1.094 0 f2
+ 264 R   P 171.875 0 walk r pose 2r | B 202.695 0.648 v -0.988 0 f2
+ 267 R   P 174.188 0 walk r pose 0r | B 201.832 0.648 v -0.863 0 f2
+ 270 R   P 176.500 0 walk r pose 0r | B 201.094 0.648 v -0.738 0 f2
+ 273 R   P 178.813 0 walk r pose 1r | B 200.480 0.648 v -0.613 0 f1
+ 276 R   P 181.125 0 walk r pose 1r | B 199.992 0.648 v -0.488 0 f1
+ 279 R   P 183.438 0 walk r pose 0r | B 199.629 0.648 v -0.363 0 f1
+ 282 R   P 185.750 0 walk r pose 0r | B 199.391 0.648 v -0.238 0 f1
+ 285 R   P 188.063 0 walk r pose 2r ball | B 200.277 0.648 v 2.313 0 f1 | pickup
+ 288 R   P 190.375 0 walk r pose 2r ball | B 202.277 0.648 v 2.313 0 f1
+ 291 R   P 192.688 0 walk r pose 0r ball | B 204.277 0.648 v 2.313 0 f5
+ 294 R   P 195 0 walk r pose 0r ball | B 207.277 0.648 v 2.313 0 f5
+ 297 R   P 197.313 0 walk r pose 1r ball | B 209.277 0.648 v 2.313 0 f5
+ 300 R   P 199.625 0 walk r pose 1r ball | B 211.277 0.648 v 2.313 0 f3
+ 303 R   P 201.938 0 walk r pose 0r ball | B 213.277 0.648 v 2.313 0 f3
+ 306 R   P 204.250 0 walk r pose 0r ball | B 216.277 0.648 v 2.313 0 f3
+ 309 R   P 206.563 0 walk r pose 2r ball | B 218.277 0.648 v 2.313 0 f4
+ 312 R   P 208.875 0 walk r pose 2r ball | B 220.277 0.648 v 2.313 0 f4
+ 315 R   P 211.188 0 walk r pose 0r ball | B 223.277 0.648 v 2.313 0 f4
+ 318 R   P 213.500 0 walk r pose 0r ball | B 225.277 0.648 v 2.313 0 f1
+ 321 R   P 215.813 0 walk r pose 1r ball | B 227.277 0.648 v 2.313 0 f1
+ 324 R   P 218.125 0 walk r pose 1r ball | B 230.277 0.648 v 2.313 0 f1
+ 327 R   P 220.438 0 walk r pose 0r ball | B 232.277 0.648 v 2.313 0 f5
+ 330 -   P 222 0 walk r pose 0r ball | B 234.277 0.648 v 1.563 0 f5
+ 333 -   P 222.813 0 walk r pose 0r ball | B 234.277 0.648 v 0.813 0 f5
+ 336 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0.063 0 f5
+ 339 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 342 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 345 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 348 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 351 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 354 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 357 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 360 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 363 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 366 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 369 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 372 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 375 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 378 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 381 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 384 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 387 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 390 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 393 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 396 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 399 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 402 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 405 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 408 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 411 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 414 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 417 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 420 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 423 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 426 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 429 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 432 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 435 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 438 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 441 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 444 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 447 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 450 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 453 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 456 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 459 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 462 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 465 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 468 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 471 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 474 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 477 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 480 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 483 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 486 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 489 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 492 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 495 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5
+ 498 -   P 222.875 0 walk r pose 0r ball | B 234.277 0.648 v 0 0 f5

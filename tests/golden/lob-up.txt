@@ -1,0 +1,100 @@
+   0 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0 | pickup
+   3 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+   6 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+   9 -   P 121 0 walk r pose 0r ball | B 133 0 v 0 0 f0
+  12 L   P 118.688 0 walk l pose 1l ball | B 106 0 v -2.313 0 f0
+  15 L   P 116.375 0 walk l pose 1l ball | B 104 0 v -2.313 0 f0
+  18 L   P 114.063 0 walk l pose 0l ball | B 102 0 v -2.313 0 f3
+  21 L   P 111.750 0 walk l pose 0l ball | B 99 0 v -2.313 0 f3
+  24 L   P 109.438 0 walk l pose 2l ball | B 97 0 v -2.313 0 f3
+  27 L   P 107.125 0 walk l pose 2l ball | B 95 0 v -2.313 0 f2
+  30 -   P 105.563 0 walk l pose 0l ball | B 93 0 v -1.563 0 f2
+  33 -   P 104.750 0 walk l pose 0l ball | B 92 0 v -0.813 0 f2
+  36 -   P 104.688 0 walk l pose 0l ball | B 92 0 v -0.063 0 f2
+  39 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  42 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  45 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  48 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  51 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  54 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  57 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  60 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  63 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  66 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  69 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  72 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  75 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  78 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  81 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  84 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  87 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  90 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  93 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  96 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+  99 -   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+ 102 U   P 104.688 0 walk l pose 1l ball | B 92 0 v 0 0 f2
+ 105 U   P 104.688 0 walk l pose 1l ball | B 92 0 v 0 0 f2
+ 108 U   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+ 111 U   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+ 114 U   P 104.688 0 walk l pose 2l ball | B 92 0 v 0 0 f2
+ 117 U   P 104.688 0 walk l pose 2l ball | B 92 0 v 0 0 f2
+ 120 U   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+ 123 U   P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+ 126 U   P 104.688 0 walk l pose 1l ball | B 92 0 v 0 0 f2
+ 129 U   P 104.688 0 walk l pose 1l ball | B 92 0 v 0 0 f2
+ 132 UA  P 104.688 0 walk l pose 0l ball | B 92 0 v 0 0 f2
+ 135 U   P 104.688 0 walk/pass l pose 21l ball | B 92 0 v 0 0 f2
+ 138 U   P 104.688 0 walk/pass l pose 21l ball | B 92 0 v 0 0 f2
+ 141 U   P 104.688 0 walk/pass l pose 21l ball | B 92 0 v 0 0 f2
+ 144 U   P 104.688 0 walk/pass l pose 21l ball | B 92 0 v 0 0 f2
+ 147 U   P 104.688 0 walk/pass l pose 8l | B 92 0 v -2.932 7.750 f2 | kick
+ 150 U   P 104.688 0 walk/pass l pose 8l | B 86.137 15 v -2.932 6.750 f1
+ 153 U   P 104.688 0 walk/pass l pose 8l | B 83.205 21.750 v -2.932 6.250 f0
+ 156 U   P 104.688 0 walk/pass l pose 8l | B 80.274 28 v -2.932 5.750 f0
+ 159 U   P 104.688 0 walk/pass l pose 8l | B 77.342 33.750 v -2.932 5.250 f3
+ 162 U   P 104.688 0 walk l pose 0l | B 74.410 39 v -2.932 4.750 f3
+ 165 U   P 104.688 0 walk l pose 1l | B 71.479 43.750 v -2.932 4.250 f2
+ 168 U   P 104.688 0 walk l pose 1l | B 68.547 48 v -2.932 3.750 f2
+ 171 U   P 104.688 0 walk l pose 0l | B 65.615 51.750 v -2.932 3.250 f1
+ 174 U   P 104.688 0 walk l pose 0l | B 62.684 55 v -2.932 2.750 f1
+ 177 U   P 104.688 0 walk l pose 2l | B 59.752 57.750 v -2.932 2.250 f0
+ 180 U   P 104.688 0 walk l pose 2l | B 56.821 60 v -2.932 1.750 f0
+ 183 U   P 104.688 0 walk l pose 0l | B 53.889 61.750 v -2.932 1.250 f3
+ 186 U   P 104.688 0 walk l pose 0l | B 50.957 63 v -2.932 0.750 f3
+ 189 U   P 104.688 0 walk l pose 1l | B 48.026 63.750 v -2.932 0.250 f2
+ 192 U   P 104.688 0 walk l pose 1l | B 45.094 64 v -2.932 -0.250 f2
+ 195 U   P 104.688 0 walk l pose 0l | B 42.162 63.750 v -2.932 -0.750 f1
+ 198 U   P 104.688 0 walk l pose 0l | B 39.231 63 v -2.932 -1.250 f1
+ 201 U   P 104.688 0 walk l pose 2l | B 36.299 61.750 v -2.932 -1.750 f0
+ 204 U   P 104.688 0 walk l pose 2l | B 33.368 60 v -2.932 -2.250 f0
+ 207 U   P 104.688 0 walk l pose 0l | B 30.436 57.750 v -2.932 -2.750 f3
+ 210 U   P 104.688 0 walk l pose 0l | B 27.504 55 v -2.932 -3.250 f3
+ 213 U   P 104.688 0 walk l pose 1l | B 24.573 51.750 v -2.932 -3.750 f2
+ 216 U   P 104.688 0 walk l pose 1l | B 21.641 48 v -2.932 -4.250 f2
+ 219 U   P 104.688 0 walk l pose 0l | B 18.709 43.750 v -2.932 -4.750 f1
+ 222 U   P 104.688 0 walk l pose 0l | B 15.778 39 v -2.932 -5.250 f1
+ 225 U   P 104.688 0 walk l pose 2l | B 12.846 33.750 v -2.932 -5.750 f0
+ 228 U   P 104.688 0 walk l pose 2l | B 9.915 28 v -2.932 -6.250 f0
+ 231 U   P 104.688 0 walk l pose 0l | B 6.983 21.750 v -2.932 -6.750 f3
+ 234 U   P 104.688 0 walk l pose 0l | B 8.983 24 v 2 1.750 f3
+ 237 U   P 104.688 0 walk l pose 1l | B 10.983 25.750 v 2 1.250 f3
+ 240 U   P 104.688 0 walk l pose 1l | B 12.983 27 v 2 0.750 f4
+ 243 U   P 104.688 0 walk l pose 0l | B 14.983 27.750 v 2 0.250 f4
+ 246 U   P 104.688 0 walk l pose 0l | B 16.983 28 v 2 -0.250 f4
+ 249 U   P 104.688 0 walk l pose 2l | B 18.983 27.750 v 2 -0.750 f1
+ 252 U   P 104.688 0 walk l pose 2l | B 20.983 27 v 2 -1.250 f1
+ 255 U   P 104.688 0 walk l pose 0l | B 22.983 25.750 v 2 -1.750 f1
+ 258 U   P 104.688 0 walk l pose 0l | B 24.983 24 v 2 -2.250 f5
+ 261 U   P 104.688 0 walk l pose 1l | B 26.983 21.750 v 2 -2.750 f5
+ 264 U   P 104.688 0 walk l pose 1l | B 28.983 19 v 2 -3.250 f5
+ 267 U   P 104.688 0 walk l pose 0l | B 30.983 15.750 v 2 -3.750 f3
+ 270 U   P 104.688 0 walk l pose 0l | B 32.983 12 v 2 -4.250 f3
+ 273 U   P 104.688 0 walk l pose 2l | B 34.983 7.750 v 2 -4.750 f3
+ 276 U   P 104.688 0 walk l pose 2l | B 36.983 3 v 2 -5.250 f4
+ 279 U   P 104.688 0 walk l pose 0l | B 38.983 0.750 v 2 -5.750 f4
+ 282 -   P 104.688 0 walk l pose 0l | B 40.796 2.621 v 1.813 1.371 f4 | bounce
+ 285 -   P 104.688 0 walk l pose 0l | B 42.608 3.992 v 1.813 0.871 f1
+ 288 -   P 104.688 0 walk l pose 0l | B 44.421 4.863 v 1.813 0.371 f1
+ 291 -   P 104.688 0 walk l pose 0l | B 46.233 5.234 v 1.813 -0.129 f1
+ 294 -   P 104.688 0 walk l pose 0l | B 48.046 5.105 v 1.813 -0.629 f5
+ 297 -   P 104.688 0 walk l pose 0l | B 49.858 4.477 v 1.813 -1.129 f5
