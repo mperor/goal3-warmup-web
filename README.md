@@ -1,9 +1,13 @@
 # goal3-warmup-web
 
+![The title and warm-up screen of the original](docs/reference/img.png)
+
 The ball-practice warm-up screen of *Kunio-kun no Nekketsu Soccer League* (くにおくんの熱血サッカーリーグ,
 Technōs Japan, Famicom, 1993; known as *Goal 3*), rebuilt for the web as a fan tribute. The player
 and the ball follow the original's rules, checked frame by frame against recordings of the original
 running in an emulator, and the music and sound effects are played by an emulated NES sound chip.
+
+**Play it: https://mperor.github.io/goal3-warmup-web/**
 
 Plain HTML, CSS and JavaScript modules: no build step, no dependencies.
 
@@ -18,7 +22,8 @@ npx serve .
 py -m http.server
 ```
 
-and open the address it prints.
+and open the address it prints. Every push to `master` publishes the page on GitHub Pages
+(`.github/workflows/pages.yml`).
 
 ## Controls
 
@@ -51,6 +56,7 @@ The data in `js/art/` and `js/audio/sound-data.js` is generated from the origina
 logic is compared with it. None of this is needed to run the page. The tools need Node.js 18+,
 Python 3.10+ (stdlib only), [Mesen 2.2.1](https://www.mesen.ca/) and **your own dump of the
 original cartridge** at `rom/nsl-jp.nes` (git-ignored; no ROM is part of this repository).
+`tools/record_gif.mjs`, `tools/render_audio.mjs` and `tools/gen_favicon.mjs` only need Node.js.
 
 | Tool                         | What it does                                                                 |
 |------------------------------|------------------------------------------------------------------------------|
@@ -63,6 +69,7 @@ original cartridge** at `rom/nsl-jp.nes` (git-ignored; no ROM is part of this re
 | `tools/check_replay.mjs`     | replays recorded play sessions through the game logic and compares with RAM  |
 | `tools/gen_sprites.py`       | builds `js/art/sprites.js` from the frame dumps and a PPU snapshot           |
 | `tools/gen_favicon.mjs`      | draws the favicon from the ball sprite                                       |
+| `tools/record_gif.mjs`       | records a GIF of the screen from the game logic on a scripted input plan     |
 
 The play-session recordings in `tools/data/` are local and not committed; record your own with
 `tools/mesen/frame-dump.lua` and `tools/mesen/export-screen.lua` (see `tools/recording.py`).

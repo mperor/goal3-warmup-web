@@ -48,11 +48,10 @@ const FONTS = {
   },
 };
 
-export function renderPixelText(el) {
-  const font = FONTS[el.dataset.pixelText];
-  const text = el.textContent.trim();
-  const wordGaps = el.dataset.wordGaps?.split(' ').map(Number) ?? [];
-  let d = '';
+// Lays out text in one of the fonts as rows of '#' (ink) and '.', like the pixel art.
+export function pixelTextRows(fontName, text, wordGaps = []) {
+  const font = FONTS[fontName];
+  const glyphs = [];
   let x = 0;
   let word = 0;
 
@@ -63,9 +62,20 @@ export function renderPixelText(el) {
     }
     const rows = font.glyphs[ch];
     if (!rows) continue;
-    d += rowsToPath(rows, '#', x);
+    glyphs.push({ x, rows });
     x += rows[0].length + font.spacing;
   }
 
-  replaceWithPixels(el, x - font.spacing, font.height, [{ fill: 'currentColor', d }]);
+  const width = x - font.spacing;
+  return Array.from({ length: font.height }, (_, y) => {
+    const row = Array(width).fill('.');
+    for (const g of glyphs) [...g.rows[y]].forEach((c, i) => c === '#' && (row[g.x + i] = '#'));
+    return row.join('');
+  });
+}
+
+export function renderPixelText(el) {
+  const wordGaps = el.dataset.wordGaps?.split(' ').map(Number) ?? [];
+  const rows = pixelTextRows(el.dataset.pixelText, el.textContent.trim(), wordGaps);
+  replaceWithPixels(el, rows[0].length, rows.length, [{ fill: 'currentColor', d: rowsToPath(rows, '#') }]);
 }
