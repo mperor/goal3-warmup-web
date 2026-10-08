@@ -1,0 +1,318 @@
+:root {
+  --bg: #16181d;
+  --panel: #1f2229;
+  --line: #30343d;
+  --text: #d7dae0;
+  --dim: #8a909c;
+  --accent: #ffd34d;
+  --scene: #155fd9;
+  --changed: #3b3420;
+  font: 13px/1.4 ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button,
+select,
+textarea,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button,
+select {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+button:hover,
+button:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+h1 {
+  font-size: 15px;
+  margin: 0;
+}
+
+h2 {
+  font-size: 14px;
+  margin: 20px 0 6px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.tabs [aria-selected="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+main {
+  padding: 12px 16px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.plan-text textarea {
+  display: block;
+  width: min(760px, 90vw);
+  margin: 6px 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.hint {
+  color: var(--dim);
+  margin: 4px 0;
+}
+
+.stage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.view {
+  width: 768px;
+  max-width: 100%;
+}
+
+.screen {
+  position: relative;
+  width: 768px;
+  height: 519px;
+  background: var(--scene);
+}
+
+.screen canvas {
+  position: absolute;
+  inset: 0;
+  width: 768px;
+  height: 519px;
+}
+
+#scene {
+  image-rendering: pixelated;
+}
+
+.recording {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  margin: 0;
+  color: #ff5a5a;
+  font-weight: 700;
+}
+
+.transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 4px;
+}
+
+.position {
+  margin-left: auto;
+  color: var(--accent);
+}
+
+#frame {
+  width: 100%;
+}
+
+#strip {
+  display: block;
+  width: 100%;
+  cursor: pointer;
+  background: var(--panel);
+}
+
+.legend {
+  color: var(--dim);
+  margin: 4px 0;
+}
+
+.legend span {
+  margin-right: 10px;
+  white-space: nowrap;
+}
+
+.legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+
+.state {
+  flex: 1;
+  min-width: 340px;
+  max-height: calc(100vh - 120px);
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 8px 10px;
+}
+
+.state h3 {
+  font-size: 13px;
+  margin: 8px 0 4px;
+  color: var(--accent);
+}
+
+.state dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0 12px;
+  margin: 0 0 0 10px;
+}
+
+.state dt {
+  color: var(--dim);
+}
+
+.state dd {
+  margin: 0;
+}
+
+.state .changed {
+  background: var(--changed);
+}
+
+.state .group {
+  grid-column: 1 / 3;
+}
+
+.state .group > dl {
+  margin-left: 14px;
+}
+
+.state .tags span {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--line);
+}
+
+.preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.preview canvas {
+  width: 192px;
+  height: 192px;
+  image-rendering: pixelated;
+  background: var(--scene);
+}
+
+.action {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.action:hover,
+.action.selected {
+  background: var(--panel);
+}
+
+.action > b {
+  width: 130px;
+  flex: none;
+}
+
+.cells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.cell {
+  width: 52px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--dim);
+}
+
+.cell canvas {
+  display: block;
+  width: 52px;
+  height: 52px;
+  image-rendering: pixelated;
+  background: var(--scene);
+}
+
+.cell.hit canvas {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.cell .event {
+  color: var(--accent);
+}
+
+.poses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pose {
+  text-align: center;
+  font-size: 11px;
+}
+
+.pose canvas {
+  display: block;
+  width: 96px;
+  height: 96px;
+  image-rendering: pixelated;
+  background: var(--scene);
+}
+
+.sfx {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 14px;
+  align-items: center;
+}

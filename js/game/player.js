@@ -64,7 +64,7 @@ export function drawnFacing(p, pose) {
   return p.facing === 'left' ? 'right' : 'left';
 }
 
-const ANIMATIONS = {
+export const ANIMATIONS = {
   stand: { poses: [POSE.stand], frames: 1 },
   walk: { poses: [POSE.walk1, POSE.stand, POSE.walk2, POSE.stand], frames: 6 },
   // Treading on the spot (Up or Down) after an action or a run: the walk, from half a step earlier.
@@ -79,7 +79,7 @@ const ANIMATIONS = {
 // An action is drawn from the end of its first tick, so the first step lasts one tick more.
 // A `strike` action emits 'strike:<kind>:<tick>' on every tick after the first until the ball is hit.
 // An action with `hits` emits its event on every tick of that window until the ball is hit.
-const ACTIONS = {
+export const ACTIONS = {
   // A press on its last ticks is kept for when it is over (B there: a volley at the ball coming down).
   lift: { steps: [[POSE.lift, 6]], events: { 1: 'lift' }, inputFrom: 4, abFrom: 5 },
   // A at a ball in the air above him: the same motion, meeting the ball as it drops to the foot.

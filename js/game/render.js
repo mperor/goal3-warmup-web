@@ -3,7 +3,7 @@ import { BALL_FRAMES, PALETTES, PLAYER_POSES, SHADOW, TILES } from '../art/sprit
 // The canvas covers screen rows 0..172; NES sprites appear one row below their OAM y.
 const toCanvasY = (oamY) => oamY + 1;
 
-function paintParts(parts, width, height, palette, mirror) {
+export function paintParts(parts, width, height, palette, mirror) {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
