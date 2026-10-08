@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Goal 3 Warm-up</title>
   <link rel="icon" href="favicon.png" type="image/png" sizes="32x32">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -28,6 +28,27 @@
     </footer>
   </div>
 
+  <div class="rotate-hint">
+    <p>TURN YOUR PHONE SIDEWAYS</p>
+    <button class="window__button" type="button" data-fullscreen>FULL SCREEN</button>
+  </div>
+
+  <div class="touch-pad" aria-hidden="true">
+    <button class="touch-pad__start" type="button" tabindex="-1" data-start>START</button>
+    <div class="touch-pad__dpad" data-dpad>
+      <span class="touch-pad__arm touch-pad__arm--up"></span>
+      <span class="touch-pad__arm touch-pad__arm--left"></span>
+      <span class="touch-pad__arm touch-pad__arm--middle"></span>
+      <span class="touch-pad__arm touch-pad__arm--right"></span>
+      <span class="touch-pad__arm touch-pad__arm--down"></span>
+    </div>
+    <div class="touch-pad__buttons">
+      <span class="touch-pad__button touch-pad__button--ab" data-button="ab">A+B</span>
+      <span class="touch-pad__button touch-pad__button--b" data-button="b">B</span>
+      <span class="touch-pad__button touch-pad__button--a" data-button="a">A</span>
+    </div>
+  </div>
+
   <dialog id="menu" class="window" aria-labelledby="menu-title">
     <div class="window__box">
       <h2 id="menu-title" class="window__title" lang="ja">くにおくんの熱血サッカーリーグ</h2>
@@ -36,16 +57,19 @@
       <h3 class="window__heading">CONTROLS</h3>
       <dl class="window__keys">
         <dt>LEFT RIGHT</dt><dd>move (tap twice: run)</dd>
+        <dt>UP DOWN</dt><dd>move up and down the pitch</dd>
         <dt>X</dt><dd>A: pass, kick</dd>
         <dt>Z</dt><dd>B: shoot, dive</dd>
         <dt>SPACE</dt><dd>A+B: jump</dd>
         <dt>ESC</dt><dd>this window</dd>
         <dt>M</dt><dd>sound on / off</dd>
       </dl>
+      <p class="window__text">Or with a gamepad (START: this window) or the buttons on a touch screen.</p>
 
       <h3 class="window__heading">OPTIONS</h3>
       <ul class="window__list">
         <li><button id="sound-toggle" class="window__option" type="button" aria-pressed="false">SOUND <span class="window__value">ON</span></button></li>
+        <li><button class="window__option" type="button" aria-pressed="false" data-fullscreen>FULL SCREEN <span class="window__value">OFF</span></button></li>
       </ul>
 
       <h3 class="window__heading">LINKS</h3>

@@ -8,14 +8,14 @@ import { createRenderer } from './render.js';
 const FRAMES_PER_TICK = 3;
 
 // The game holds still (nothing moves, no input is taken) while paused() says so.
-export function startGame(canvas, { sound, paused = () => false } = {}) {
-  const input = createInput();
+export function startGame(canvas, { input = createInput(), sound, paused = () => false } = {}) {
   const render = createRenderer(canvas);
   const practice = createPractice(START.playerX, START.ballX);
   let frame = 0;
 
   let pose = framePlayer(practice.player);
   startLoop(() => {
+    input.poll();
     if (paused()) {
       input.snapshot(); // drop taps made meanwhile
     } else {

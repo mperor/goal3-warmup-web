@@ -37,6 +37,11 @@ and open the address it prints. Every push to `master` publishes the page on Git
 | Esc        |         | the menu window            |
 | M          |         | sound on / off             |
 
+A gamepad works too: the d-pad or the left stick, A on the right face button, B on the bottom one,
+START for the menu window (a browser may still want a key press, click or touch before it plays
+sound). On a touch screen the page shows a d-pad, B, A, A+B and START; phones
+are best held sideways, and where the browser allows it the menu has a full screen switch.
+
 ## Layout
 
 ```
@@ -45,6 +50,7 @@ js/game/               player and ball logic, input, the fixed-step loop, render
 js/audio/              NES sound chip (APU) emulation in an AudioWorklet, the captured song and effects
 js/art/                sprites, the title logo and the press-start prompt as pixel data
 js/pixel-*.js          bitmap text and pixel art rendering
+js/touch.js            touch controls and full screen
 fonts/                 local fonts (SIL OFL 1.1)
 docs/reference/        reference images and the Mesen movie the tools start from
 tools/                 the tools that capture data from the original and check the game against it

@@ -15,11 +15,33 @@
   --bg: #155fd9;
   --text: #ffffff;
 
-  /* One NES pixel; the scene is 256 NES pixels wide. */
-  --px: min(4px, calc((100vw - 32px) / 256));
+  /* The viewport height without the browser's bars where it can tell. */
+  --vh: 100vh;
+  /* Room left and right of the scene, for the touch controls in landscape. */
+  --side: 16px;
+  /* One NES pixel; the scene is 256 NES pixels wide and, with its padding, 192 high. */
+  --px: min(4px, calc((100vw - 2 * var(--side)) / 256), calc((var(--vh) - 32px) / 192));
 
   --font-ja: "DotGothic16", monospace;
   --font-pixel: "Press Start 2P", monospace;
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --vh: 100dvh;
+  }
+}
+
+@media (pointer: coarse) and (orientation: landscape) {
+  :root {
+    --side: 152px;
+  }
+}
+
+@media (orientation: landscape) {
+  .touch-ui {
+    --side: 152px;
+  }
 }
 
 *,
@@ -45,7 +67,7 @@ body {
 
 .scene {
   width: calc(var(--px) * 256);
-  min-height: 100vh;
+  min-height: var(--vh);
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -159,6 +181,10 @@ body {
   width: calc(var(--px) * var(--w));
   height: calc(var(--px) * var(--h));
   shape-rendering: crispEdges;
+}
+
+[hidden] {
+  display: none !important;
 }
 
 .visually-hidden {
@@ -305,4 +331,129 @@ body {
   .window__button--blink {
     animation: none;
   }
+}
+
+/* Turn the phone sideways: shown on touch screens held upright */
+
+.rotate-hint {
+  display: none;
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  text-align: center;
+}
+
+@media (pointer: coarse) and (orientation: portrait) and (max-width: 600px) {
+  .rotate-hint {
+    display: flex;
+  }
+}
+
+@media (orientation: portrait) and (max-width: 600px) {
+  .touch-ui .rotate-hint {
+    display: flex;
+  }
+}
+
+/* Touch controls: a d-pad on the left, B, A and A+B on the right, as on the NES pad */
+
+.touch-pad {
+  display: none;
+  --size: 128px;
+  --edge: 16px;
+}
+
+@media (pointer: coarse) {
+  .touch-pad {
+    display: block;
+  }
+}
+
+.touch-ui .touch-pad {
+  display: block;
+}
+
+.touch-pad__start,
+.touch-pad__dpad,
+.touch-pad__buttons {
+  position: fixed;
+  bottom: calc(var(--edge) + env(safe-area-inset-bottom));
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touch-pad__dpad {
+  left: calc(var(--edge) + env(safe-area-inset-left));
+  width: var(--size);
+  height: var(--size);
+  display: grid;
+  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+}
+
+.touch-pad__arm {
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid var(--text);
+}
+
+.touch-pad__arm--up { grid-area: 1 / 2; border-bottom: none; }
+.touch-pad__arm--left { grid-area: 2 / 1; border-right: none; }
+.touch-pad__arm--middle { grid-area: 2 / 2; border: none; }
+.touch-pad__arm--right { grid-area: 2 / 3; border-left: none; }
+.touch-pad__arm--down { grid-area: 3 / 2; border-top: none; }
+
+[data-pressed~="up"] .touch-pad__arm--up,
+[data-pressed~="left"] .touch-pad__arm--left,
+[data-pressed~="right"] .touch-pad__arm--right,
+[data-pressed~="down"] .touch-pad__arm--down,
+.touch-pad__button.is-pressed {
+  background: rgba(255, 211, 77, 0.8);
+}
+
+.touch-pad__start {
+  left: calc(var(--edge) + env(safe-area-inset-left) + var(--size) / 2 - 36px);
+  bottom: calc(var(--edge) + env(safe-area-inset-bottom) + var(--size) + 14px);
+  width: 72px;
+  padding: 6px 0;
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid var(--text);
+  border-radius: 12px;
+}
+
+.touch-pad__buttons {
+  right: calc(var(--edge) + env(safe-area-inset-right));
+  width: var(--size);
+  display: grid;
+  grid-template: auto auto / 1fr 1fr;
+  gap: 10px;
+}
+
+.touch-pad__button {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid var(--text);
+  border-radius: 50%;
+}
+
+.touch-pad__button--ab {
+  grid-column: 1 / 3;
+  aspect-ratio: auto;
+  padding: 6px 0;
+  font-size: 8px;
+  border-radius: 12px;
 }
