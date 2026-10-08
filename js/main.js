@@ -7,7 +7,7 @@ import { setupMenu } from './menu.js';
 import { renderPixelArt } from './pixel-art.js';
 import { renderPixelText } from './pixel-font.js';
 import { snapScale } from './scale.js';
-import { setupFullscreen, setupTouch } from './touch.js';
+import { setupFullscreen, setupTouch, setupVibration } from './touch.js';
 
 const ART = { 'title-logo': TITLE_LOGO, 'press-start': PRESS_START };
 
@@ -37,6 +37,7 @@ const menu = setupMenu({
   sound,
 });
 const input = createInput({ onStart: menu.toggle });
-setupTouch(document.querySelector('.touch-pad'), { input, onStart: menu.open });
-setupFullscreen([...document.querySelectorAll('[data-fullscreen]')]);
+const vibrate = setupVibration(document.getElementById('vibration-toggle'));
+setupTouch(document.querySelector('.touch-pad'), { input, onStart: menu.open, vibrate });
+setupFullscreen([...document.querySelectorAll('[data-fullscreen]')], document.querySelector('[data-home-screen]'));
 startGame(document.getElementById('game'), { input, sound, paused: menu.paused });

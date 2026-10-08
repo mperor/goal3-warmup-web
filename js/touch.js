@@ -2,11 +2,16 @@
 // and START. A finger that starts on the d-pad steers it until lifted, even off it; one that starts
 // on the buttons presses whichever it is over, so it can slide from B onto A.
 const DPAD_DEAD = 0.35; // of the d-pad's half width: around the middle nothing is pressed
+const BUZZ_MS = 12;
+const BUZZ_BUTTONS = ['a', 'b', 'ab'];
+const VIBRATION_KEY = 'goal3-warmup:vibration';
 
-export function setupTouch(root, { input, onStart }) {
+// vibrate(): whether pressing A, B or A+B gives a short buzz.
+export function setupTouch(root, { input, onStart, vibrate = () => false }) {
   const dpad = root.querySelector('[data-dpad]');
   const buttons = [...root.querySelectorAll('[data-button]')];
   const pointers = new Map(); // pointer id -> { onDpad, pressed: Set of buttons }
+  let last = new Set();
 
   function dpadButtons(x, y) {
     const box = dpad.getBoundingClientRect();
@@ -29,6 +34,8 @@ export function setupTouch(root, { input, onStart }) {
     const held = new Set();
     for (const { pressed } of pointers.values()) pressed.forEach((button) => held.add(button));
     input.setTouch(held);
+    if (vibrate() && BUZZ_BUTTONS.some((b) => held.has(b) && !last.has(b))) navigator.vibrate(BUZZ_MS);
+    last = held;
     buttons.forEach((el) => el.classList.toggle('is-pressed', held.has(el.dataset.button)));
     dpad.dataset.pressed = [...held].filter((b) => ['left', 'right', 'up', 'down'].includes(b)).join(' ');
   }
@@ -68,11 +75,49 @@ export function setupTouch(root, { input, onStart }) {
   }, { capture: true, passive: true });
 }
 
+// The vibration switch in the window, where the device can vibrate (not iPhones) and has a touch
+// screen; on by default, remembered. Returns whether it is on.
+export function setupVibration(toggle) {
+  const item = toggle.closest('li') ?? toggle;
+  let on = true;
+  try {
+    on = localStorage.getItem(VIBRATION_KEY) !== '0';
+  } catch {
+    // Not remembered then.
+  }
+  const show = () => {
+    toggle.querySelector('.window__value').textContent = on ? 'ON' : 'OFF';
+    toggle.setAttribute('aria-pressed', String(on));
+  };
+  const touch = matchMedia('(pointer: coarse)');
+  const available = () => 'vibrate' in navigator && (touch.matches || document.documentElement.classList.contains('touch-ui'));
+  const showItem = () => (item.hidden = !available());
+
+  show();
+  showItem();
+  touch.addEventListener('change', showItem);
+  window.addEventListener('pointerdown', showItem, { passive: true });
+  toggle.addEventListener('click', () => {
+    on = !on;
+    try {
+      localStorage.setItem(VIBRATION_KEY, on ? '1' : '0');
+    } catch {
+      // Not remembered then.
+    }
+    show();
+  });
+  return () => on && available();
+}
+
 // Full screen where the browser allows it (not on iPhones), turning a phone sideways if it can.
-export function setupFullscreen(toggles) {
+// Where it does not, a hint says the page added to the home screen opens without the browser's bars
+// (manifest.webmanifest), unless it already runs that way.
+export function setupFullscreen(toggles, homeScreenHint) {
   const el = document.documentElement;
   if (!document.fullscreenEnabled) {
     toggles.forEach((toggle) => ((toggle.closest('li') ?? toggle).hidden = true));
+    const installed = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone;
+    if (homeScreenHint) homeScreenHint.hidden = Boolean(installed);
     return;
   }
 

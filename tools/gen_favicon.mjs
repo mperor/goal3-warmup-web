@@ -1,12 +1,16 @@
 // Writes the favicon from the game's ball sprite: favicon.svg (sharp at any size) and favicon.png
-// (32x32, for browsers without SVG favicons). Run: node tools/gen_favicon.mjs
-import { writeFileSync } from 'node:fs';
+// (32x32, for browsers without SVG favicons), and the icons for the home screen (icons/: the ball
+// on the scene's blue, within the middle that a round mask keeps). Run: node tools/gen_favicon.mjs
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import { BALL_FRAMES, PALETTES, TILES } from '../js/art/sprites.js';
 
 const FRAME = 1; // the symmetric one, the clearest at this size
 const SIZE = 16;
 const PNG_SCALE = 2;
+const BG = '#155fd9';
+// Home screen icons: side and how many screen pixels per ball pixel.
+const ICONS = { 'apple-touch-icon.png': [180, 7], 'icon-192.png': [192, 8], 'icon-512.png': [512, 20] };
 
 // Palette indices per pixel, 0 = transparent.
 const pixels = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
@@ -51,20 +55,24 @@ function chunk(type, data) {
   return Buffer.concat([length, body, crc]);
 }
 
-function png() {
-  const side = SIZE * PNG_SCALE;
+// The ball scaled up and centred on a side x side image: transparent around it, or the background.
+function png(side, scale, background = null) {
   const header = Buffer.alloc(13);
   header.writeUInt32BE(side, 0);
   header.writeUInt32BE(side, 4);
   header.set([8, 6, 0, 0, 0], 8); // 8-bit RGBA
+  const offset = Math.floor((side - SIZE * scale) / 2);
+  const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
   const raw = Buffer.alloc(side * (1 + side * 4)); // each row: filter byte 0, then pixels
   for (let y = 0; y < side; y += 1) {
     for (let x = 0; x < side; x += 1) {
-      const index = pixels[Math.floor(y / PNG_SCALE)][Math.floor(x / PNG_SCALE)];
-      if (!index) continue;
-      const hex = PALETTES.ball[index];
+      const px = Math.floor((x - offset) / scale);
+      const py = Math.floor((y - offset) / scale);
+      const index = px >= 0 && py >= 0 && px < SIZE && py < SIZE ? pixels[py][px] : 0;
+      const hex = index ? PALETTES.ball[index] : background;
+      if (!hex) continue;
       const at = y * (1 + side * 4) + 1 + x * 4;
-      raw.set([1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)), at);
+      raw.set(rgb(hex), at);
       raw[at + 3] = 255;
     }
   }
@@ -77,4 +85,8 @@ function png() {
 }
 
 writeFileSync(new URL('../favicon.svg', import.meta.url), svg());
-writeFileSync(new URL('../favicon.png', import.meta.url), png());
+writeFileSync(new URL('../favicon.png', import.meta.url), png(SIZE * PNG_SCALE, PNG_SCALE));
+mkdirSync(new URL('../icons/', import.meta.url), { recursive: true });
+for (const [name, [side, scale]] of Object.entries(ICONS)) {
+  writeFileSync(new URL(`../icons/${name}`, import.meta.url), png(side, scale, BG));
+}

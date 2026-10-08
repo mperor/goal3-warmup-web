@@ -16,6 +16,11 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="favicon.png" type="image/png" sizes="32x32">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Goal 3">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -41,16 +46,24 @@
   <div class="rotate-hint">
     <p>TURN YOUR PHONE SIDEWAYS</p>
     <button class="window__button" type="button" data-fullscreen>FULL SCREEN</button>
+    <p data-home-screen hidden>FULL SCREEN: SHARE, ADD TO HOME SCREEN</p>
   </div>
 
   <div class="touch-pad" aria-hidden="true">
     <button class="touch-pad__start" type="button" tabindex="-1" data-start>START</button>
+    <!-- A shadow on the pitch, dithered as the NES does it (it has no transparency); the arrows are
+         pixels of 4 px. -->
     <div class="touch-pad__dpad" data-dpad>
-      <span class="touch-pad__arm touch-pad__arm--up"></span>
-      <span class="touch-pad__arm touch-pad__arm--left"></span>
-      <span class="touch-pad__arm touch-pad__arm--middle"></span>
-      <span class="touch-pad__arm touch-pad__arm--right"></span>
-      <span class="touch-pad__arm touch-pad__arm--down"></span>
+      <svg viewBox="0 0 32 32">
+        <rect class="touch-pad__arm" data-arm="up" x="10" y="0" width="12" height="10"/>
+        <rect class="touch-pad__arm" data-arm="left" x="0" y="10" width="10" height="12"/>
+        <rect class="touch-pad__arm" data-arm="right" x="22" y="10" width="10" height="12"/>
+        <rect class="touch-pad__arm" data-arm="down" x="10" y="22" width="12" height="10"/>
+        <path class="touch-pad__arrow" data-arm="up" d="M15 4h2v1h-2zM14 5h4v1h-4zM13 6h6v1h-6zM12 7h8v1h-8z"/>
+        <path class="touch-pad__arrow" data-arm="down" d="M12 24h8v1h-8zM13 25h6v1h-6zM14 26h4v1h-4zM15 27h2v1h-2z"/>
+        <path class="touch-pad__arrow" data-arm="left" d="M4 15v2h1v-2zM5 14v4h1v-4zM6 13v6h1v-6zM7 12v8h1v-8z"/>
+        <path class="touch-pad__arrow" data-arm="right" d="M24 12v8h1v-8zM25 13v6h1v-6zM26 14v4h1v-4zM27 15v2h1v-2z"/>
+      </svg>
     </div>
     <div class="touch-pad__buttons">
       <span class="touch-pad__button touch-pad__button--ab" data-button="ab">A+B</span>
@@ -80,6 +93,7 @@
       <ul class="window__list">
         <li><button id="sound-toggle" class="window__option" type="button" aria-pressed="false">SOUND <span class="window__value">ON</span></button></li>
         <li><button class="window__option" type="button" aria-pressed="false" data-fullscreen>FULL SCREEN <span class="window__value">OFF</span></button></li>
+        <li hidden><button id="vibration-toggle" class="window__option" type="button" aria-pressed="true">VIBRATION <span class="window__value">ON</span></button></li>
       </ul>
 
       <h3 class="window__heading">LINKS</h3>

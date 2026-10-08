@@ -59,6 +59,12 @@ body {
   min-height: 100%;
 }
 
+/* No zoom on a double tap and no pull to refresh, which a thumb on the controls sets off. */
+html {
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
 body {
   background: var(--bg);
   color: var(--text);
@@ -68,6 +74,10 @@ body {
 }
 
 .scene {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
   width: calc(var(--px) * 256);
   min-height: var(--vh);
   margin: 0 auto;
@@ -371,12 +381,18 @@ body {
   }
 }
 
-/* Touch controls: a d-pad on the left, B, A and A+B on the right, as on the NES pad */
+/* Touch controls as shadows on the pitch, dithered like the NES draws them (a checkerboard of black
+   NES pixels, it has no transparency): a d-pad on the left with START above it, B, A and A+B on
+   the right. Pressed, a shadow turns solid and its label yellow (as the window's options). */
 
 .touch-pad {
   display: none;
   --size: 128px;
   --edge: 16px;
+  --dither: repeating-conic-gradient(#000 0 25%, transparent 0 50%) 0 0 / calc(var(--px) * 2) calc(var(--px) * 2);
+  --solid: rgba(0, 0, 0, 0.55);
+  --ink: rgba(175, 205, 255, 0.9);
+  --on: #ffd34d;
 }
 
 @media (pointer: coarse) {
@@ -401,44 +417,70 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* The whole square takes touches (the corners are the diagonals); only the cross is drawn. */
 .touch-pad__dpad {
   left: calc(var(--edge) + env(safe-area-inset-left));
   width: var(--size);
   height: var(--size);
-  display: grid;
-  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+}
+
+.touch-pad__dpad::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--dither);
+  /* The cross: arms 12 of 32 wide. */
+  clip-path: polygon(31.25% 0, 68.75% 0, 68.75% 31.25%, 100% 31.25%, 100% 68.75%, 68.75% 68.75%,
+    68.75% 100%, 31.25% 100%, 31.25% 68.75%, 0 68.75%, 0 31.25%, 31.25% 31.25%);
+}
+
+.touch-pad__dpad svg {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .touch-pad__arm {
-  background: rgba(0, 0, 0, 0.55);
-  border: 2px solid var(--text);
+  fill: transparent;
 }
 
-.touch-pad__arm--up { grid-area: 1 / 2; border-bottom: none; }
-.touch-pad__arm--left { grid-area: 2 / 1; border-right: none; }
-.touch-pad__arm--middle { grid-area: 2 / 2; border: none; }
-.touch-pad__arm--right { grid-area: 2 / 3; border-left: none; }
-.touch-pad__arm--down { grid-area: 3 / 2; border-top: none; }
+.touch-pad__arrow {
+  fill: var(--ink);
+  shape-rendering: crispEdges;
+}
 
-[data-pressed~="up"] .touch-pad__arm--up,
-[data-pressed~="left"] .touch-pad__arm--left,
-[data-pressed~="right"] .touch-pad__arm--right,
-[data-pressed~="down"] .touch-pad__arm--down,
-.touch-pad__button.is-pressed {
-  background: rgba(255, 211, 77, 0.8);
+[data-pressed~="up"] .touch-pad__arm[data-arm="up"],
+[data-pressed~="left"] .touch-pad__arm[data-arm="left"],
+[data-pressed~="right"] .touch-pad__arm[data-arm="right"],
+[data-pressed~="down"] .touch-pad__arm[data-arm="down"] {
+  fill: var(--solid);
+}
+
+[data-pressed~="up"] .touch-pad__arrow[data-arm="up"],
+[data-pressed~="left"] .touch-pad__arrow[data-arm="left"],
+[data-pressed~="right"] .touch-pad__arrow[data-arm="right"],
+[data-pressed~="down"] .touch-pad__arrow[data-arm="down"] {
+  fill: var(--on);
+}
+
+.touch-pad__start,
+.touch-pad__button {
+  display: grid;
+  place-items: center;
+  font-family: var(--font-pixel);
+  color: var(--ink);
+  background: var(--dither);
+  border: none;
+  border-radius: 0;
 }
 
 .touch-pad__start {
-  left: calc(var(--edge) + env(safe-area-inset-left) + var(--size) / 2 - 36px);
+  left: calc(var(--edge) + env(safe-area-inset-left) + var(--size) / 2 - 40px);
   bottom: calc(var(--edge) + env(safe-area-inset-bottom) + var(--size) + 14px);
-  width: 72px;
-  padding: 6px 0;
-  font-family: var(--font-pixel);
-  font-size: 8px;
-  color: var(--text);
-  background: rgba(0, 0, 0, 0.55);
-  border: 2px solid var(--text);
-  border-radius: 12px;
+  width: 80px;
+  padding: 8px 0;
+  font-size: 9px;
 }
 
 .touch-pad__buttons {
@@ -450,20 +492,19 @@ body {
 }
 
 .touch-pad__button {
-  display: grid;
-  place-items: center;
   aspect-ratio: 1;
-  font-family: var(--font-pixel);
-  font-size: 12px;
-  background: rgba(0, 0, 0, 0.55);
-  border: 2px solid var(--text);
-  border-radius: 50%;
+  font-size: 16px;
 }
 
 .touch-pad__button--ab {
   grid-column: 1 / 3;
   aspect-ratio: auto;
-  padding: 6px 0;
-  font-size: 8px;
-  border-radius: 12px;
+  padding: 8px 0;
+  font-size: 9px;
+}
+
+.touch-pad__start:active,
+.touch-pad__button.is-pressed {
+  color: var(--on);
+  background: var(--solid);
 }
