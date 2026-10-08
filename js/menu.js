@@ -1,6 +1,7 @@
-// One window around the game: how to play, the sound switch and where the game and its makers
-// live on. It is open first (closing it lets the sound start) and again with Esc or a click on
-// the scene. While it is open the game holds still and the sound is paused.
+// One window around the game: how to play, the options and where the game and its makers live
+// on. It is open first (closing it lets the sound start) and again with Esc, a click on the scene,
+// the START button on the screen or a gamepad's START. While it is open the game holds still and
+// the sound is paused.
 export function setupMenu({ menu, close, sound }) {
   let started = false;
 
@@ -38,5 +39,9 @@ export function setupMenu({ menu, close, sound }) {
   });
 
   menu.showModal();
-  return { paused: () => menu.open };
+  return {
+    paused: () => menu.open,
+    open,
+    toggle: () => (menu.open ? menu.close() : open()),
+  };
 }
