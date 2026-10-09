@@ -33,7 +33,8 @@ function saveMuted(muted) {
 
 // The original's music and sound effects, played by an emulated NES sound chip. Browsers only
 // allow sound after a user gesture, so it starts on the first key press or click.
-export function createSound() {
+// music: whether the song plays (false: the effects alone, setMusic turns it on).
+export function createSound({ music = true } = {}) {
   let context = null;
   let gain = null;
   let node = null;
@@ -54,7 +55,7 @@ export function createSound() {
       node = new AudioWorkletNode(context, 'nes-audio', {
         numberOfInputs: 0,
         outputChannelCount: [1],
-        processorOptions: { data: decode(SOUND_DATA), music: true },
+        processorOptions: { data: decode(SOUND_DATA), music },
       });
       node.connect(gain);
     }).catch((error) => console.warn('No sound: the sound chip did not load.', error));
@@ -72,6 +73,11 @@ export function createSound() {
     },
     play(name) {
       if (node) node.port.postMessage({ type: 'sfx', name });
+    },
+    // Starts the song from its beginning, or stops it.
+    setMusic(on) {
+      music = on;
+      if (node) node.port.postMessage({ type: on ? 'music' : 'stop' });
     },
     get muted() {
       return muted;
