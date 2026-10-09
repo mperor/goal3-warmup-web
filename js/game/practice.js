@@ -3,31 +3,19 @@ import {
   catchBall, createPlayer, faceBall, faceGoal, isRunning, juggled, loseBall, seeBall, setTrapping, startGroundKick, startTrap,
   struckBall, takeBall, tickPlayer,
 } from './player.js';
+import { CAPTURE_DZ, HEAD_Z, REACH, relation } from './reach.js';
 
 // Player-ball interaction on the ball-practice screen, measured from the recording.
 const DRIBBLE_OFFSET = 12;
 const LAND_DRIBBLE_OFFSET = 8;
-const CAPTURE_DX = 12;
-const CAPTURE_DZ = 1.5;
-// Measured with tools/simulate.py (mount-* plans): taken 14.3 px away, not 15.7.
-const GROUND_CAPTURE_DX = 14.5;
 const NO_CAPTURE_TICKS = 10;
-const HIT_DX = 16;
-const HIT_DZ_MIN = -6;
-const HIT_DZ_MAX = 22;
 const SHOT_SPEED = 8;
 const SHOT_HANG_TICKS = 13;
-const TRAP_DX = 16;
-const TRAP_MAX_Z = 32; // before it moves; trapped up to 31.4 px recorded
 const TRAP_PULL = 0.5;
-// Keeping the ball up with A: how far to the side, how low it has come, the knock up.
-const KEEP_UP_DX = 14;
-const KEEP_UP_Z = 12;
+// Keeping the ball up with A: the knock up (the reach: reach.js).
 const KEEP_UP_VZ = 8;
 const TRAP_CARRY_DX = 9;
-// Juggling it on the run: reach (before either moves), the knock up, the lead it keeps.
-const JUGGLE_MAX_Z = 30;
-const JUGGLE_DX = 8;
+// Juggling it on the run: the knock up, the lead it keeps (the reach: reach.js).
 const JUGGLE_VZ = 3;
 const JUGGLE_LEAD = 0.1875;
 const JUGGLE_CARRY_DX = 16;
@@ -48,13 +36,6 @@ const FLOAT_TURNED_K = 1.2;
 // B without the ball: a ball still this high when the kick starts is volleyed, a lower one is
 // met with an overhead kick (recorded: ~31 px and up volleyed, 29 px and below overhead).
 const VOLLEY_SHOT_MIN_Z = 30;
-// Reach of the kicks from the ground, from the recorded hits and misses.
-const STRIKES = {
-  volley: { dx: 13, minZ: 0, maxZ: 32 },
-  volleyShot: { dx: 16, minZ: 12, maxZ: 32 },
-  // Once the leg is out (tick 5 on) it also reaches a ball lying ~19 px away.
-  overheadShot: { dx: 16, minZ: 0, maxZ: 12, farDx: 20, farFrom: 5 },
-};
 // A shot from the ground lifts a low ball to this height.
 const GROUND_SHOT_Z = 8;
 // Kicked up from under the player's feet when he flicks it off a ride.
@@ -63,10 +44,6 @@ const RIDE_RELEASE_Z = 7;
 // tools/simulate.py, the take-* plans).
 const AIR_CAPTURE_DZ = 15;
 const AIR_CAPTURE_LAG = 0.5;
-// A ball in flight caught by a player in the air: caught up to 13.2 px ahead and 14.0 px below,
-// missed at 15.5 px ahead and 14.1 px below.
-const AIR_CATCH_DX = 14;
-const AIR_CATCH_DZ_MIN = -14;
 const HIGH_VOLLEY_VX = 4.734375;
 const HIGH_VOLLEY_VZ = 10.25;
 const FLICK_BEHIND = 12;
@@ -97,41 +74,13 @@ const SHOT_CURVE = {
   down: { vx: 0x7f8 / 256, vy: 0x78 / 256, step: 0.5, ticks: 8 },
   downAhead: { vx: 8, vy: 0, step: 0.5, ticks: 8 },
 };
-// A dive hits the ball like a shot from the ground; reach from three hits and their near misses
-// (missed 20.6 px away and 10.2 px below the player).
-const DIVE_DX = 17;
-const DIVE_DZ_MIN = -10;
-const DIVE_DZ_MAX = 17;
-// One backward dive recorded: hit 29.2 px ahead 17.3 px up, missed 27.2 px ahead 20.3 px up.
-const BACK_DIVE_AHEAD = 30;
-const BACK_DIVE_DZ_MAX = 18;
-// Overhead kick in the air, from the recorded hits and misses: ahead hit 12.3 px away and 11.2 px
-// up, missed 13.6 px away and 11.5 px up; behind hit 13.1 px away 5.9 px up, missed 10.9 px up.
-const OVERHEAD_AHEAD = 13;
-const OVERHEAD_DZ_MAX = 11.25;
-const OVERHEAD_BEHIND = 14;
-const OVERHEAD_BEHIND_DZ_MAX = 10.5;
-const OVERHEAD_NEAR = 11;
-const OVERHEAD_NEAR_BEHIND = 8;
-const OVERHEAD_FAR_DZ_MAX = 10.5;
-const OVERHEAD_AHEAD_EARLY = 10;
 const OVERHEAD_T4_DZ_MAX = 7.5;
-const OVERHEAD_LOW_FROM = 11;
-const OVERHEAD_LOW_DZ_MIN = -12;
-// Bouncing off the head: the top of it, how far to the side it reaches, and the roll off it.
-const HEAD_Z = 24;
-const HEAD_DX = 12.5;
+// Bouncing off the head: the roll off it (the reach: reach.js).
 const HEAD_FAR = 12;
 const HEAD_DRIFT = 0.5;
 const HEAD_ROLL_VX = 0.125;
 const HEAD_ROLL_PER_PX = 0.11;
 const HEAD_ROLL_VZ = -0.375;
-// Bicycle kick: hit 22.3 px up, missed 23.5 px up.
-const BICYCLE_DZ_MAX = 22.5;
-const BICYCLE_DX_MIN = 8;
-// Volley in the air (airshots recording): hit 12 px behind and 28 px up, not 32.6 px up.
-const AIR_VOLLEY_DX = 13;
-const AIR_VOLLEY_DZ_MAX = 30;
 
 // Every field from the start, as for the player.
 export function createPractice(playerX, ballX) {
@@ -175,47 +124,14 @@ function release(s) {
   s.ball.curve = null;
 }
 
-function inReach(p, b) {
-  const dz = b.z - p.z;
-  return Math.abs(b.x - p.x) <= HIT_DX && dz >= HIT_DZ_MIN && dz <= HIT_DZ_MAX;
-}
-
-// The overhead kick in the air reaches less high, and behind the player only low; the bicycle
-// kick reaches a little higher.
-function inKickReach(p, b) {
-  const dz = b.z - p.z;
-  if (p.action?.name === 'overhead') {
-    // The reach follows the leg (tools/simulate.py, the airhit-* plans): on its first ticks shorter
-    // ahead and on tick 4 lower; right overhead and just behind as high as ahead; late in the kick
-    // it gets a ball well below him too.
-    const t = p.action.hitTick;
-    const ahead = (b.x - p.x) * sign(p);
-    if (dz < (t >= OVERHEAD_LOW_FROM ? OVERHEAD_LOW_DZ_MIN : HIT_DZ_MIN)) return false;
-    if (t === 4 && dz > OVERHEAD_T4_DZ_MAX) return false;
-    if (ahead >= 0) {
-      return ahead <= (t <= 4 ? OVERHEAD_AHEAD_EARLY : OVERHEAD_AHEAD)
-        && dz <= (ahead > OVERHEAD_NEAR ? OVERHEAD_FAR_DZ_MAX : OVERHEAD_DZ_MAX);
-    }
-    return -ahead <= OVERHEAD_BEHIND && dz <= (-ahead <= OVERHEAD_NEAR_BEHIND ? OVERHEAD_DZ_MAX : OVERHEAD_BEHIND_DZ_MAX);
-  }
-  if (p.action?.name === 'bicycle') {
-    // A ball some way off to either side, not one right above him.
-    const dx = Math.abs(b.x - p.x);
-    return dx >= BICYCLE_DX_MIN && dx <= HIT_DX && dz >= HIT_DZ_MIN && dz <= BICYCLE_DZ_MAX;
-  }
-  // The volley in the air reaches high, and behind him too.
-  if (p.action?.name === 'volleyShotAir') return Math.abs(b.x - p.x) <= AIR_VOLLEY_DX && dz >= HIT_DZ_MIN && dz <= AIR_VOLLEY_DZ_MAX;
-  return inReach(p, b);
-}
-
-// Diving backwards (facing the other way) the player meets a ball well ahead of where he faces.
-function inDiveReach(p, b) {
-  const dz = b.z - p.z;
-  if (Math.sign(p.vx) === -sign(p)) {
-    const ahead = (b.x - p.x) * sign(p);
-    return ahead >= 0 && ahead <= BACK_DIVE_AHEAD && dz >= DIVE_DZ_MIN && dz <= BACK_DIVE_DZ_MAX;
-  }
-  return Math.abs(b.x - p.x) <= DIVE_DX && dz >= DIVE_DZ_MIN && dz <= DIVE_DZ_MAX;
+// Whether the kick in the air under way reaches the ball (reach.js).
+function kickReaches(p, b) {
+  const rel = relation(p, b);
+  const name = p.action?.name;
+  if (name === 'overhead') return REACH.overhead.fits(rel, { t: p.action.hitTick });
+  if (name === 'bicycle') return REACH.bicycle.fits(rel);
+  if (name === 'volleyShotAir') return REACH.volleyShotAir.fits(rel);
+  return REACH.hit.fits(rel);
 }
 
 function struck(s) {
@@ -258,7 +174,7 @@ function chooseKick(s, button) {
   // At a ball in the air above him (and not to be volleyed as it comes down) A goes through the
   // lift: keeping it up, it knocks the ball up again as it drops to his foot (tools/data, the
   // juggle recording); behind him with the heel. A high ball coming in from the side is volleyed.
-  else if (button === 'a' && b.z >= 1 && Math.abs(b.x - p.x) <= KEEP_UP_DX && (!high || b.vz > 0 || b.vx === 0)) {
+  else if (button === 'a' && REACH.keepUpChoice.fits(relation(p, b)) && (!high || b.vz > 0 || b.vx === 0)) {
     name = (b.x - p.x) * sign(p) < 0 ? 'keepUpBehind' : 'keepUp';
   } else if (button === 'a') name = high ? 'groundVolley' : 'pass';
   else name = high ? 'volleyShot' : 'groundOverhead';
@@ -269,10 +185,8 @@ function chooseKick(s, button) {
 // The action may end on this very tick, so the kind and the action tick come with the event.
 function strike(s, kind, t) {
   const { player: p, ball: b } = s;
-  const reach = STRIKES[kind];
-  const dx = t >= reach.farFrom ? reach.farDx : reach.dx;
   const dz = b.z - p.z;
-  if (Math.abs(b.x - p.x) > dx || dz < reach.minZ || dz > reach.maxZ) return;
+  if (!REACH.strike.fits(relation(p, b), { kind, t })) return;
   struckBall(p);
   if (kind !== 'volley') {
     groundShot(s, kind);
@@ -352,7 +266,7 @@ function applyEvent(s, e) {
       b.vz = PASS_VZ;
     }
     b.hang = 0;
-  } else if (event === 'keepUp' && !p.hasBall && b.vz < 0 && b.z <= KEEP_UP_Z && Math.abs(b.x - p.x) <= KEEP_UP_DX) {
+  } else if (event === 'keepUp' && !p.hasBall && b.vz < 0 && REACH.keepUp.fits(relation(p, b))) {
     struck(s);
     note(s, 'kick', p.action?.name ?? 'keepUp');
     s.lifted = true;
@@ -370,14 +284,14 @@ function applyEvent(s, e) {
     }
   } else if (event === 'strike' && !p.hasBall) {
     strike(s, e.kind, e.t);
-  } else if (event === 'dive' && !p.hasBall && inDiveReach(p, b)) {
+  } else if (event === 'dive' && !p.hasBall && REACH.dive.fits(relation(p, b), { backward: Math.sign(p.vx) === -sign(p) })) {
     groundShot(s, 'dive');
-  } else if (event === 'chip' && !p.hasBall && inReach(p, b)) {
+  } else if (event === 'chip' && !p.hasBall && REACH.hit.fits(relation(p, b))) {
     chip(s, p.action?.name ?? 'chip');
-  } else if (event === 'hit' && !p.hasBall && inKickReach(p, b)) {
+  } else if (event === 'hit' && !p.hasBall && kickReaches(p, b)) {
     struck(s);
     shoot(s, sign(p), p.action?.name ?? 'hit');
-  } else if (event === 'hitBehind' && !p.hasBall && inKickReach(p, b)) {
+  } else if (event === 'hitBehind' && !p.hasBall && kickReaches(p, b)) {
     struck(s);
     shoot(s, -sign(p), p.action?.name ?? 'hitBehind');
   }
@@ -403,8 +317,8 @@ function headBall(s, playerZ) {
   }
   const dz = b.z - playerZ;
   const ahead = (b.x - p.x) * sign(p);
-  if (p.mode !== 'air' || p.action || p.vz <= 0 || b.vz >= 0 || Math.abs(ahead) > HEAD_DX
-    || dz < HEAD_Z || b.z + b.vz - p.z >= HEAD_Z) return false;
+  if (p.mode !== 'air' || p.action || p.vz <= 0 || b.vz >= 0 || !REACH.head.fits({ ahead, dz })
+    || b.z + b.vz - p.z >= HEAD_Z) return false;
   s.headRide = { dz, ahead };
   b.vx = (ahead > HEAD_FAR - 3 ? -HEAD_DRIFT : HEAD_DRIFT) * sign(p);
   b.x += b.vx;
@@ -421,8 +335,7 @@ function juggle(s, { playerX, playerVx, ballX, ballZ, ballVz, wasRunning }) {
   const running = p.mode === 'run' && !p.action;
   const along = () => p.vx + JUGGLE_LEAD * Math.sign(p.vx);
   if (s.juggleWait > 0) s.juggleWait -= 1;
-  if (running && wasRunning && !s.juggleWait && ballVz < 0 && ballZ >= 1 && ballZ <= JUGGLE_MAX_Z
-    && Math.abs(ballX - playerX) <= JUGGLE_DX) {
+  if (running && wasRunning && !s.juggleWait && ballVz < 0 && REACH.juggle.fits({ dx: ballX - playerX, z: ballZ })) {
     note(s, 'kick', 'juggle');
     s.carried = true;
     s.juggleWait = JUGGLE_EVERY_TICKS;
@@ -476,7 +389,6 @@ function step(s, input) {
 // What the world sees before anyone moves; the player is told what concerns him.
 function look(s) {
   const { player: p, ball: b } = s;
-  const ahead = (b.x - p.x) * sign(p);
   seeBall(p, {
     // A ball on the ground is something to land on, also rolling (recorded at ~1.1 px/tick
     // towards the player; the speed limit is a guess).
@@ -485,8 +397,7 @@ function look(s) {
   });
   return {
     // A ball in flight just ahead of a player in the air is caught.
-    catchable: p.mode === 'air' && !p.action && b.z >= 1 && ahead >= 0 && ahead <= AIR_CATCH_DX
-      && b.z - p.z >= AIR_CATCH_DZ_MIN && b.z - p.z <= CAPTURE_DZ,
+    catchable: p.mode === 'air' && !p.action && REACH.catch.fits(relation(p, b)),
     playerX: p.x, playerZ: p.z, playerVx: p.vx, wasRunning: p.mode === 'run', wasOnBall: p.onBall,
     ballX: b.x, ballZ: b.z, ballVx: b.vx, ballVz: b.vz, ballGrounded: b.grounded,
   };
@@ -569,7 +480,8 @@ function takeOrTrap(s, before, input) {
     return;
   }
   // On the ground the reach is judged from where the player was before he moved.
-  const near = p.mode === 'air' ? Math.abs(b.x - p.x) <= CAPTURE_DX : Math.abs(b.x - playerX) <= GROUND_CAPTURE_DX;
+  const air = p.mode === 'air';
+  const near = REACH.take.fits({ dx: b.x - (air ? p.x : playerX) }, { air });
   if (s.noCapture === 0 && !kicking && near && reached) {
     if (p.mode === 'air' && b.z < 1) {
       // Taken up from the ground: on this tick it goes with the player, a little behind.
@@ -594,8 +506,8 @@ function takeOrTrap(s, before, input) {
   // Judged before either moved this tick (once trapping, as it is now).
   const tz = wasTrapping ? b.z : ballZ;
   const tdx = wasTrapping ? dx : ballX - playerX;
-  const trapping = onFoot && !input.a && !(s.lifted && standing && !wasTrapping) && (wasTrapping || (tz >= 1 && tz <= TRAP_MAX_Z))
-    && Math.abs(tdx) <= TRAP_DX && (wasTrapping || ballVz < 0 || tz < TRAP_FOOT_Z);
+  const trapping = onFoot && !input.a && !(s.lifted && standing && !wasTrapping)
+    && REACH.trap.fits({ dx: tdx, z: tz }, { trapping: wasTrapping }) && (wasTrapping || ballVz < 0 || tz < TRAP_FOOT_Z);
   setTrapping(p, trapping);
   if (trapping && !wasTrapping) {
     // Low it is stopped with the foot, higher with the thigh. Taken before either moves this tick:
