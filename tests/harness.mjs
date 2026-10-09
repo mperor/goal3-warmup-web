@@ -7,37 +7,64 @@ import { drawnFacing, framePlayer } from '../js/game/player.js';
 import { createPractice, tickPractice } from '../js/game/practice.js';
 
 export const FRAMES_PER_TICK = 3;
-const BUTTONS = { L: 'left', R: 'right', U: 'up', D: 'down', A: 'a', B: 'b' };
+const BUTTON_KEYS = { L: 'left', R: 'right', U: 'up', D: 'down', A: 'a', B: 'b' };
 
 export const tap = (at, buttons, frames = 2) => [[at, at + frames, buttons]];
 export const doubleTap = (at, buttons) => [...tap(at, buttons, 4), ...tap(at + 8, buttons, 4)];
 
-function heldAt(plan, frame) {
+export function heldAt(plan, frame) {
   const held = { left: false, right: false, up: false, down: false, a: false, b: false };
   for (const [from, to, buttons] of plan) {
-    if (frame >= from && frame < to) for (const c of buttons) held[BUTTONS[c]] = true;
+    if (frame >= from && frame < to) for (const c of buttons) held[BUTTON_KEYS[c]] = true;
   }
   return held;
 }
 
-// Calls onTick(s, { frame, input, pose, facing }) after every tick, with the pose drawn on that
-// frame. Returns the practice state at the end.
-export function runPlan(plan, frames, onTick = () => {}) {
-  const s = createPractice(START.playerX, START.ballX);
-  let tapped = { a: false, b: false };
-  for (let frame = 0; frame < frames; frame++) {
-    const held = heldAt(plan, frame);
-    tapped = { a: tapped.a || held.a, b: tapped.b || held.b };
-    let input = null;
-    if (frame % FRAMES_PER_TICK === 0) {
-      input = { ...held, a: tapped.a, b: tapped.b };
-      tickPractice(s, input);
-      tapped = { a: false, b: false };
-    }
-    const pose = framePlayer(s.player);
-    if (input) onTick(s, { frame, input, pose, facing: drawnFacing(s.player, pose) });
+// A run of the game, frame by frame: stepFrame(run, held) with the buttons held on its frame.
+export function createRun() {
+  return { s: createPractice(START.playerX, START.ballX), tapped: { a: false, b: false }, frame: 0 };
+}
+
+// One frame: a logic tick on every 3rd, the pose on each. Returns { frame, input, pose, facing },
+// input null between ticks.
+export function stepFrame(run, held) {
+  const { s } = run;
+  const frame = run.frame;
+  run.tapped = { a: run.tapped.a || held.a, b: run.tapped.b || held.b };
+  let input = null;
+  if (frame % FRAMES_PER_TICK === 0) {
+    input = { ...held, a: run.tapped.a, b: run.tapped.b };
+    tickPractice(s, input);
+    run.tapped = { a: false, b: false };
   }
-  return s;
+  run.frame += 1;
+  const pose = framePlayer(s.player);
+  return { frame, input, pose, facing: drawnFacing(s.player, pose) };
+}
+
+// Calls onTick(s, info) after every tick and onFrame(s, info) after every frame. Returns the
+// practice state at the end.
+export function runPlan(plan, frames, onTick = () => {}, onFrame = () => {}) {
+  const run = createRun();
+  while (run.frame < frames) {
+    const info = stepFrame(run, heldAt(plan, run.frame));
+    if (info.input) onTick(run.s, info);
+    onFrame(run.s, info);
+  }
+  return run.s;
+}
+
+// Back from the buttons held on each frame to a plan of [from, to, buttons].
+export function planOf(heldFrames) {
+  const plan = [];
+  const keys = heldFrames.map((h) => Object.entries(BUTTON_KEYS).filter(([, name]) => h[name]).map(([c]) => c).join(''));
+  for (let f = 0; f < keys.length;) {
+    let end = f + 1;
+    while (end < keys.length && keys[end] === keys[f]) end += 1;
+    if (keys[f]) plan.push([f, end, keys[f]]);
+    f = end;
+  }
+  return plan;
 }
 
 const n = (v) => (Number.isInteger(v) ? String(v) : v.toFixed(3));
