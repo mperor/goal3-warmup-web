@@ -79,3 +79,19 @@ test('the ball hits the ground with a bounce sound after a pass', () => {
   const ticks = play(tap(30, 'A'), 300);
   assert.ok(firstWith(ticks, 'bounce', 30));
 });
+
+test('the record of a tick says what made each kick and where the ball was; the sounds come from it', () => {
+  const plan = [[40, 70, 'R'], ...tap(120, 'AB'), ...tap(208, 'A'), ...tap(327, 'A'), ...tap(389, 'AB'), ...tap(398, 'B')];
+  const events = [];
+  runPlan(plan, 470, (s) => {
+    events.push(...s.events);
+    // Every kind of event so far has the sound of its name, in the order they happened.
+    assert.deepEqual(s.sounds, s.events.map((e) => e.type));
+  });
+  const keepUp = events.find((e) => e.type === 'kick' && e.by === 'keepUp');
+  const overhead = events.find((e) => e.type === 'shot' && e.by === 'overhead');
+  assert.ok(keepUp, 'the keep-up is a kick by keepUp');
+  assert.ok(overhead, 'the overhead kick is a shot by overhead');
+  // Met within the overhead kick's reach (practice.js: 13 px ahead, 11.25 px up).
+  assert.ok(overhead.dx > 0 && overhead.dx <= 13 && overhead.dz <= 11.25, `met at dx ${overhead.dx}, dz ${overhead.dz}`);
+});

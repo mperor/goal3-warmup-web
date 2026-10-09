@@ -100,7 +100,7 @@ traces, `check_replay` and `compare_sim` give the same output before and after.
 | Step | What | Done when |
 |------|------|-----------|
 | 1 | This document | merged |
-| 2 | Typed events with their reason; sounds from the events through a table; the pose from the state alone | no sound is pushed inside the mechanics, no flag exists only for the pose; the inspector shows the events of a tick |
+| 2 | Typed events with their reason; sounds from the events through a table; the pose from the state alone | the player's requests to the ball are objects; each tick keeps a record (`s.events`: what happened, what did it, where the ball was) and the sounds come from it; the pose is worked out in `js/game/animation.js`, and what only the pose needs is one group (`p.look`) nothing else reads; the inspector shows the record |
 | 3 | `World` with explicit phases over the player and the ball, in today's order | `practice.js` no longer writes inside the player; one `tickWorld` reads as the list of phases |
 | 4 | Contacts as data: kicks, traps, the head, catching, taking up, mounting as rules with shapes and a priority | every reach check is a rule the inspector can draw; the measured hits and misses from the comments are unit tests |
 | 5 | The ball's relation as one state in the world | the nine fields are gone; the trap-into-a-jump case is settled after checking the original (`tools/simulate.py`) |

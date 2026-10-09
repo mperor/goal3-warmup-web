@@ -1,7 +1,7 @@
 import { START } from '../art/sprites.js';
+import { drawnFacing, framePlayer } from './animation.js';
 import { createInput } from './input.js';
 import { startLoop } from './loop.js';
-import { drawnFacing, framePlayer } from './player.js';
 import { createPractice, tickPractice } from './practice.js';
 import { createRenderer } from './render.js';
 

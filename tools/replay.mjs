@@ -1,6 +1,6 @@
 // Replays the original's input through the game logic and compares it with the recorded RAM,
 // tick by tick (tools/check_replay.mjs, tools/compare_sim.mjs).
-import { drawnFacing, framePlayer } from '../js/game/player.js';
+import { drawnFacing, framePlayer } from '../js/game/animation.js';
 import { createPractice, tickPractice } from '../js/game/practice.js';
 
 const TOLERANCE = 1.01;

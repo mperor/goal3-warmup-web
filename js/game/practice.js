@@ -137,7 +137,8 @@ export function createPractice(playerX, ballX) {
   return {
     player: createPlayer(playerX),
     ball: createBall(ballX),
-    sounds: [], // the sound effects of the last tick
+    events: [], // what happened in the last tick, each with what did it (see note)
+    sounds: [], // the sound effects of the last tick, from its events
     noCapture: 0, // ticks after a kick before the ball can be taken again
     ballSteps: 1, // moves of the ball this tick (0 or 2 where the original holds it back a tick)
     rideFrac: 0, // the ball's fraction of a pixel while he rides it
@@ -152,6 +153,18 @@ export function createPractice(playerX, ballX) {
 }
 
 const sign = (p) => (p.facing === 'left' ? -1 : 1);
+
+// The sound effect of each kind of event; the others make none.
+const SOUNDS = { kick: 'kick', shot: 'shot', bounce: 'bounce', jump: 'jump', land: 'land', pickup: 'pickup' };
+
+const round = (v) => Math.round(v * 100) / 100;
+
+// Writes down what happened in the record of the tick: what did it (`by`: the action, the kind of
+// kick) and where the ball was from the player then.
+function note(s, type, by = null) {
+  const { player: p, ball: b } = s;
+  s.events.push({ type, by, dx: round(b.x - p.x), dz: round(b.z - p.z) });
+}
 
 // Every kick sets the ball's speed into the depth afresh (none unless it says so).
 function release(s) {
@@ -208,28 +221,28 @@ function struck(s) {
   if (s.player.action) s.player.action.struck = true;
 }
 
-function shoot(s, dir) {
+function shoot(s, dir, by) {
   const b = s.ball;
+  note(s, 'shot', by);
   release(s);
   // The shot leaves the foot with a head start: +24 px on the hit tick, 8 of them from the move.
   b.x += (3 * SHOT_SPEED - SHOT_SPEED) * dir;
   b.vx = SHOT_SPEED * dir;
   b.vz = 0;
   b.hang = SHOT_HANG_TICKS + 1; // counted down on the shot tick already
-  s.sounds.push('shot');
 }
 
-function chip(s) {
+function chip(s, by) {
   const { player: p, ball: b } = s;
+  note(s, 'kick', by);
   release(s);
   b.vx = CHIP_VX * sign(p);
   b.vz = CHIP_VZ;
   b.hang = 0;
-  s.sounds.push('kick');
 }
 
-function groundShot(s) {
-  shoot(s, sign(s.player));
+function groundShot(s, by) {
+  shoot(s, sign(s.player), by);
   if (s.ball.z < GROUND_SHOT_Z) s.ball.z = GROUND_SHOT_Z;
 }
 
@@ -264,33 +277,35 @@ function strike(s, kind, t) {
   if (Math.abs(b.x - p.x) > dx || dz < reach.minZ || dz > reach.maxZ) return;
   if (p.action) p.action.struck = true;
   if (kind !== 'volley') {
-    groundShot(s);
+    groundShot(s, kind);
   } else if (dz > VOLLEY_HIGH_Z) {
+    note(s, 'kick', 'high volley');
     release(s);
     b.vx = HIGH_VOLLEY_VX * sign(p);
     b.vz = HIGH_VOLLEY_VZ;
     b.hang = 0;
     s.ballSteps = 0;
-    s.sounds.push('kick');
   } else {
-    chip(s);
+    chip(s, 'volley');
   }
 }
 
-function applyEvent(s, event) {
+// What the player asks of the ball this tick ({ type, ... } from tickPlayer).
+function applyEvent(s, e) {
   const { player: p, ball: b } = s;
+  const event = e.type;
   if (event === 'lift' && p.hasBall) {
     release(s);
     s.lifted = true;
     b.vx = 0;
     b.vz = 8;
   } else if (event === 'jumpKick' && p.hasBall) {
+    note(s, 'kick', 'jumpKick');
     release(s);
     b.vx = CHIP_VX * sign(p);
     b.vz = CHIP_VZ;
     // The original leaves the ball in place on the kick tick and moves it twice on the next.
     s.ballSteps = 0;
-    s.sounds.push('kick');
   } else if (event === 'flickUp' && s.flickFromRide) {
     s.flickFromRide = false;
     s.noCapture = NO_CAPTURE_TICKS;
@@ -317,6 +332,7 @@ function applyEvent(s, event) {
     b.vx = plain ? TOSS_VX[p.action.name] * sign(p) : TOSS_TURNED_VX;
     b.vz = TOSS_VZ;
   } else if (event === 'pass' && p.hasBall) {
+    note(s, 'kick', p.kick.vertical ? `pass ${p.kick.vertical}` : 'pass');
     release(s);
     const v = p.kick.vertical;
     const dx = PASS_TARGET.x - b.x;
@@ -338,36 +354,34 @@ function applyEvent(s, event) {
       b.vz = PASS_VZ;
     }
     b.hang = 0;
-    s.sounds.push('kick');
   } else if (event === 'keepUp' && !p.hasBall && b.vz < 0 && b.z <= KEEP_UP_Z && Math.abs(b.x - p.x) <= KEEP_UP_DX) {
     struck(s);
+    note(s, 'kick', p.action?.name ?? 'keepUp');
     s.lifted = true;
     b.vx = 0;
     b.vy = 0;
     b.vz = KEEP_UP_VZ;
     b.hang = 0;
-    s.sounds.push('kick');
   } else if (event === 'shot' && p.hasBall) {
-    groundShot(s);
+    groundShot(s, 'shot');
     const curve = p.kick.vertical && SHOT_CURVE[p.kick.vertical === 'up' ? 'up' : p.kick.dir > 0 ? 'downAhead' : 'down'];
     if (curve) {
       b.vx = curve.vx;
       b.vy = curve.vy;
       b.curve = { step: curve.step, ticks: curve.ticks };
     }
-  } else if (event.startsWith('strike:') && !p.hasBall) {
-    const [, kind, t] = event.split(':');
-    strike(s, kind, Number(t));
+  } else if (event === 'strike' && !p.hasBall) {
+    strike(s, e.kind, e.t);
   } else if (event === 'dive' && !p.hasBall && inDiveReach(p, b)) {
-    groundShot(s);
+    groundShot(s, 'dive');
   } else if (event === 'chip' && !p.hasBall && inReach(p, b)) {
-    chip(s);
+    chip(s, p.action?.name ?? 'chip');
   } else if (event === 'hit' && !p.hasBall && inKickReach(p, b)) {
     struck(s);
-    shoot(s, sign(p));
+    shoot(s, sign(p), p.action?.name ?? 'hit');
   } else if (event === 'hitBehind' && !p.hasBall && inKickReach(p, b)) {
     struck(s);
-    shoot(s, -sign(p));
+    shoot(s, -sign(p), p.action?.name ?? 'hitBehind');
   }
 }
 
@@ -411,6 +425,7 @@ function juggle(s, { playerX, playerVx, ballX, ballZ, ballVz, wasRunning }) {
   if (s.juggleWait > 0) s.juggleWait -= 1;
   if (running && wasRunning && !s.juggleWait && ballVz < 0 && ballZ >= 1 && ballZ <= JUGGLE_MAX_Z
     && Math.abs(ballX - playerX) <= JUGGLE_DX) {
+    note(s, 'kick', 'juggle');
     s.carried = true;
     s.juggleWait = JUGGLE_EVERY_TICKS;
     // He keeps the speed he had for this tick and the next two (a boost ends there).
@@ -420,20 +435,19 @@ function juggle(s, { playerX, playerVx, ballX, ballZ, ballVz, wasRunning }) {
     p.run.sprinting = false;
     p.juggleTicks = JUGGLE_POSE_TICKS;
     p.input.tapTick = null; // taps before it do not make a double tap with ones after
-    p.juggleLow = ballZ < TRAP_FOOT_Z;
+    p.look.juggleLow = ballZ < TRAP_FOOT_Z;
     b.vx = along();
     b.x = ballX + b.vx;
     b.z = ballZ + JUGGLE_VZ;
     b.vz = JUGGLE_VZ - GRAVITY;
     b.grounded = false;
-    s.sounds.push('kick');
     return true;
   }
   if (!s.carried) return false;
   // Off the run it flies on by itself (still counted as carried until it lands or is trapped).
   if (b.grounded || Math.abs(b.x - p.x) > JUGGLE_CARRY_DX) s.carried = false;
   if (!running || !s.carried) return false;
-  for (let i = 0; i < s.ballSteps; i++) if (tickBall(b)) s.sounds.push('bounce');
+  for (let i = 0; i < s.ballSteps; i++) if (tickBall(b)) note(s, 'bounce');
   s.ballSteps = 1;
   const vx = along();
   b.x += vx - b.vx;
@@ -441,16 +455,18 @@ function juggle(s, { playerX, playerVx, ballX, ballZ, ballVz, wasRunning }) {
   return true;
 }
 
-// Advances one logic tick. s.sounds lists the sound effects of the tick ('kick', 'shot', 'bounce',
-// 'jump', 'land', 'pickup').
+// Advances one logic tick. s.events is what happened in it ({ type, by, dx, dz }: 'kick', 'shot',
+// 'bounce', 'jump', 'land', 'pickup'), s.sounds the sound effects that go with them.
 export function tickPractice(s, input) {
   const p = s.player;
   const before = { mode: p.mode, landed: p.dive.landed, hasBall: p.hasBall };
-  s.sounds = [];
+  s.events = [];
   step(s, input);
-  if (p.mode === 'air' && before.mode !== 'air' && p.vz > 0) s.sounds.push('jump');
-  if ((before.mode === 'air' && p.mode === 'land') || (p.mode === 'dive' && p.dive.landed && !before.landed)) s.sounds.push('land');
-  if (p.hasBall && !before.hasBall) s.sounds.push('pickup');
+  if (p.mode === 'air' && before.mode !== 'air' && p.vz > 0) note(s, 'jump');
+  if (before.mode === 'air' && p.mode === 'land') note(s, 'land', 'jump');
+  else if (p.mode === 'dive' && p.dive.landed && !before.landed) note(s, 'land', 'dive');
+  if (p.hasBall && !before.hasBall) note(s, 'pickup');
+  s.sounds = s.events.map((e) => SOUNDS[e.type]).filter(Boolean);
 }
 
 function step(s, input) {
@@ -476,7 +492,7 @@ function step(s, input) {
   p.ballHigh = Math.max(0, b.z + b.vz) >= VOLLEY_SHOT_MIN_Z;
   const events = tickPlayer(p, input);
   if (p.onBall && !wasOnBall) s.rideFrac = b.x - Math.floor(b.x);
-  if (events[0] === 'offBall') {
+  if (events[0]?.type === 'offBall') {
     s.noCapture = NO_CAPTURE_TICKS;
     if (p.action?.name === 'flick') {
       s.flickFromRide = true;
@@ -489,8 +505,8 @@ function step(s, input) {
     }
   }
   if (s.noCapture > 0) s.noCapture -= 1;
-  const kick = events.find((e) => e === 'kickA' || e === 'kickB');
-  if (kick) chooseKick(s, kick === 'kickA' ? 'a' : 'b');
+  const kick = events.find((e) => e.type === 'groundKick');
+  if (kick) chooseKick(s, kick.button);
   events.forEach((e) => applyEvent(s, e));
 
   if (p.onBall) {
@@ -515,7 +531,7 @@ function step(s, input) {
 
   if (headBall(s, playerZ)) return;
   if (juggle(s, { playerX, playerVx, ballX, ballZ, ballVz, wasRunning })) return;
-  for (let i = 0; i < s.ballSteps; i++) if (tickBall(b)) s.sounds.push('bounce');
+  for (let i = 0; i < s.ballSteps; i++) if (tickBall(b)) note(s, 'bounce');
   // A lifted ball is let drop to the ground before it can be trapped.
   if (s.lifted && b.grounded) s.lifted = false;
   s.ballSteps = s.ballSteps === 0 ? 2 : 1;
@@ -544,7 +560,7 @@ function step(s, input) {
     if (p.trapping) {
       // Still in the trap on this tick; one more to stand (and turn) before he moves on.
       p.settleTicks = 1;
-      p.trapCaught = true;
+      p.look.trapCaught = true;
     }
     if (p.mode !== 'air') {
       // Taken on the ground: at the feet at once, keeping its fractions of a pixel.
@@ -571,7 +587,7 @@ function step(s, input) {
     // Low it is stopped with the foot, higher with the thigh. Taken before either moves this tick:
     // the player turns to the ball and brakes, the ball stops falling and rises a little, then is
     // carried along the way he was going (or towards him from standing).
-    p.trapLow = tz < TRAP_FOOT_Z;
+    p.look.trapLow = tz < TRAP_FOOT_Z;
     p.facing = tdx < 0 ? 'left' : 'right';
     const push = p.x - playerX - p.vx; // off a wall
     p.vx = approachZero(playerVx, TRAP_BRAKE);

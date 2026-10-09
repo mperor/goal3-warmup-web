@@ -3,7 +3,7 @@
 // the next one. Plans are as in tools/simulate.py: [from, to, buttons] in frames, buttons from
 // LRUDAB.
 import { START } from '../js/art/sprites.js';
-import { drawnFacing, framePlayer } from '../js/game/player.js';
+import { drawnFacing, framePlayer } from '../js/game/animation.js';
 import { createPractice, tickPractice } from '../js/game/practice.js';
 
 export const FRAMES_PER_TICK = 3;
