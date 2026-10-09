@@ -65,6 +65,7 @@ js/touch.js            touch controls and full screen
 js/scale.js            snaps the scale to whole screen pixels
 fonts/                 local fonts (SIL OFL 1.1)
 docs/architecture.md   how the game logic is built, where it is going and the steps there
+docs/fidelity.md       where the game is known to differ from the original, with plans to see it
 docs/reference/        reference images and the Mesen movie the tools start from
 tools/                 the tools that capture data from the original and check the game against it
 ```

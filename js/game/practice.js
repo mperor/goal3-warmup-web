@@ -93,6 +93,7 @@ export function createPractice(playerX, ballX) {
     ballSteps: 1, // moves of the ball this tick (0 or 2 where the original holds it back a tick)
     rideFrac: 0, // the ball's fraction of a pixel while he rides it
     lifted: false, // lifted by him: let drop before it can be trapped
+    liftTrapped: false, // lifted out of a trap: the lift takes the ball where it is
     flickFromRide: false,
     headRide: null, // { dz, ahead } while it rides on his head
     carried: false, // knocked up on the run and carried along
@@ -206,7 +207,8 @@ function strike(s, kind, t) {
 function applyEvent(s, e) {
   const { player: p, ball: b } = s;
   const event = e.type;
-  if (event === 'lift' && p.hasBall) {
+  if (event === 'lift' && (p.hasBall || s.liftTrapped)) {
+    s.liftTrapped = false;
     release(s);
     s.lifted = true;
     b.vx = 0;
@@ -423,7 +425,19 @@ function offTheRide(s, requests, before) {
 
 // What the player asked of the ball: a kick chosen after the A+B window, and his action's events.
 function kickBall(s, requests) {
+  // A+B while trapping: the ball is his from now (at his feet below), or, lifting it, goes on by
+  // itself this tick and is lifted from where it is on the next (not taken in between).
+  if (requests.some((e) => e.type === 'takeTrapped')) {
+    setTrapping(s.player, false);
+    catchBall(s.player);
+  }
+  const liftTrapped = requests.some((e) => e.type === 'liftTrapped');
+  if (liftTrapped) {
+    setTrapping(s.player, false);
+    s.liftTrapped = true;
+  }
   if (s.noCapture > 0) s.noCapture -= 1;
+  if (liftTrapped) s.noCapture = 1;
   const kick = requests.find((e) => e.type === 'groundKick');
   if (kick) chooseKick(s, kick.button);
   requests.forEach((e) => applyEvent(s, e));

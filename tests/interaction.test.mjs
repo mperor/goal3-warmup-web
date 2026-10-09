@@ -95,3 +95,17 @@ test('the record of a tick says what made each kick and where the ball was; the 
   // Met within the overhead kick's reach (practice.js: 13 px ahead, 11.25 px up).
   assert.ok(overhead.dx > 0 && overhead.dx <= 13 && overhead.dz <= 11.25, `met at dx ${overhead.dx}, dz ${overhead.dz}`);
 });
+
+test('A+B while trapping a ball at the thigh, the way he faces held: he takes it and flicks it, staying down', () => {
+  const plan = [[20, 24, 'L'], [28, 32, 'L'], [32, 81, 'L'], ...tap(32, 'AB'), [37, 40, 'BL'], [84, 88, 'L'], [92, 96, 'L'],
+    [96, 133, 'L'], [133, 137, 'R'], [141, 145, 'R'], [145, 199, 'R'], ...tap(164, 'AB')];
+  const ticks = play(plan, 200);
+  const trapped = ticks.filter((t) => t.frame < 165).at(-1);
+  const flick = ticks.find((t) => t.frame > 160 && t.action === 'flick');
+  assert.ok(flick, 'a flick');
+  assert.equal(flick.frame, 165);
+  assert.equal(flick.hasBall, true, 'the ball taken on that tick');
+  assert.ok(ticks.every((t) => t.frame < 160 || t.mode !== 'air'), 'no jump');
+  assert.ok(trapped.ball.z > 16, `trapped at the thigh (${trapped.ball.z} px up)`);
+});
+
