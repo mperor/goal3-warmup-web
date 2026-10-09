@@ -1,7 +1,8 @@
 // Replays the original's recorded input through the game logic and compares it with RAM.
 // Needs tools/.cache/<recording>.json from tools/export_trace.py. Run: node tools/check_replay.mjs
 import { existsSync, readFileSync } from 'node:fs';
-import { createPlayer, framePlayer, tickPlayer } from '../js/game/player.js';
+import { framePlayer } from '../js/game/animation.js';
+import { createPlayer, tickPlayer } from '../js/game/player.js';
 import { runScenario, SPRITE_LAG } from './replay.mjs';
 
 // Each scenario starts from the recorded state at `from`, set by hand where RAM alone is not enough.

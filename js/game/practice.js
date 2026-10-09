@@ -435,7 +435,7 @@ function juggle(s, { playerX, playerVx, ballX, ballZ, ballVz, wasRunning }) {
     p.run.sprinting = false;
     p.juggleTicks = JUGGLE_POSE_TICKS;
     p.input.tapTick = null; // taps before it do not make a double tap with ones after
-    p.juggleLow = ballZ < TRAP_FOOT_Z;
+    p.look.juggleLow = ballZ < TRAP_FOOT_Z;
     b.vx = along();
     b.x = ballX + b.vx;
     b.z = ballZ + JUGGLE_VZ;
@@ -560,7 +560,7 @@ function step(s, input) {
     if (p.trapping) {
       // Still in the trap on this tick; one more to stand (and turn) before he moves on.
       p.settleTicks = 1;
-      p.trapCaught = true;
+      p.look.trapCaught = true;
     }
     if (p.mode !== 'air') {
       // Taken on the ground: at the feet at once, keeping its fractions of a pixel.
@@ -587,7 +587,7 @@ function step(s, input) {
     // Low it is stopped with the foot, higher with the thigh. Taken before either moves this tick:
     // the player turns to the ball and brakes, the ball stops falling and rises a little, then is
     // carried along the way he was going (or towards him from standing).
-    p.trapLow = tz < TRAP_FOOT_Z;
+    p.look.trapLow = tz < TRAP_FOOT_Z;
     p.facing = tdx < 0 ? 'left' : 'right';
     const push = p.x - playerX - p.vx; // off a wall
     p.vx = approachZero(playerVx, TRAP_BRAKE);
