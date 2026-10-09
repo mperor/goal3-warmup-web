@@ -2,7 +2,8 @@
 // its steps over time with the events it sends to the ball and its hit window, how it is set off,
 // and where the plans of tests/plans.mjs go through it.
 import { PLAYER_POSES } from '../../js/art/sprites.js';
-import { ACTIONS, ANIMATIONS } from '../../js/game/player.js';
+import { ANIMATIONS } from '../../js/game/animation.js';
+import { ACTIONS } from '../../js/game/player.js';
 import { FRAMES_PER_TICK, runPlan } from '../../tests/harness.mjs';
 import { PLANS } from '../../tests/plans.mjs';
 import { BOX, drawPose, escape, FRAME_MS, POSE_NAMES } from './shared.js';

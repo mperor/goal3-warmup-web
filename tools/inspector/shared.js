@@ -1,6 +1,6 @@
 // What the inspector's views share: pose names and drawing a pose on a canvas.
 import { BALL_FRAMES, PALETTES, PLAYER_POSES } from '../../js/art/sprites.js';
-import { POSE } from '../../js/game/player.js';
+import { POSE } from '../../js/game/animation.js';
 import { paintParts } from '../../js/game/render.js';
 
 export const FRAME_MS = 1000 / 60;

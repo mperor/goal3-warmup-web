@@ -4,6 +4,7 @@
 // not published with the page).
 import { createSound } from '../../js/audio/sound.js';
 import { SOUND_DATA } from '../../js/audio/sound-data.js';
+import { REACH, relation } from '../../js/game/reach.js';
 import { createRenderer } from '../../js/game/render.js';
 import { createRun, FRAMES_PER_TICK, heldAt, planOf, runPlan, stepFrame } from '../../tests/harness.mjs';
 import { PLANS } from '../../tests/plans.mjs';
@@ -131,6 +132,58 @@ function draw(s, pose, facing) {
   overlay.fillText(`${p.mode}${action}`, px - 30, py - 120);
   overlay.fillText(`dx ${(b.x - p.x).toFixed(1)}  dz ${(b.z - p.z).toFixed(1)}`, bx + 10, by - 10);
   overlay.shadowBlur = 0;
+  if ($('#reach').checked) drawReach(s);
+}
+
+// The reach rules (js/game/reach.js) that can act in the player's state, as boxes of where the
+// ball (its mark) has to be: lit when it is there now. What else they need (falling, rising, ...)
+// is not drawn.
+function reachNow(s) {
+  const { player: p, ball: b } = s;
+  const a = p.action;
+  if (a?.strike) return [['strike', { kind: a.strike, t: a.t }]];
+  if (a?.name === 'overhead') return [['overhead', { t: a.t }]];
+  if (a?.name === 'bicycle') return [['bicycle', {}]];
+  if (a?.name === 'volleyShotAir') return [['volleyShotAir', {}]];
+  if (a?.name === 'volley') return [['hit', {}]];
+  if (a?.name === 'keepUp' || a?.name === 'keepUpBehind') return [['keepUp', {}]];
+  if (p.mode === 'dive') return [['dive', { backward: Math.sign(p.vx) === -(p.facing === 'left' ? -1 : 1) }]];
+  if (p.mode === 'air' && !a) {
+    return [['catch', {}], ['head', {}], ['take', { air: true }], ...(p.ballBelow !== null ? [['mount', {}]] : [])];
+  }
+  if (p.hasBall || p.onBall || a) return [];
+  return [['take', { air: false }], ['trap', { trapping: p.trapping }], ...(p.mode === 'run' ? [['juggle', {}]] : [])];
+}
+
+function drawReach(s) {
+  const { player: p, ball: b } = s;
+  const sign = p.facing === 'left' ? -1 : 1;
+  const ballY = (z) => (158 - z) * SCALE; // where the ball's mark is drawn at height z
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  overlay.font = '11px ui-monospace, Consolas, monospace';
+  reachNow(s).forEach(([name, ctx], i) => {
+    const rule = REACH[name];
+    // mount: the ball lies below; its rule goes by his height above it.
+    const rel = name === 'mount' ? { dx: p.ballBelow - p.x, dz: -p.z } : relation(p, b);
+    const fits = rule.fits(rel, ctx);
+    const hue = [200, 140, 280, 30, 330][i % 5];
+    rule.shapes(ctx).forEach((box) => {
+      const [a0, a1] = box.ahead ?? [-300, 300];
+      const xs = [p.x + a0 * sign, p.x + a1 * sign].map((v) => clamp(v, -8, 264) * SCALE);
+      let ys;
+      if (box.z) ys = box.z.map((z) => ballY(clamp(z, -20, 200)));
+      else if (box.dz) ys = box.dz.map((d) => ballY(clamp(p.z + d, -20, 200)));
+      else ys = [ballY(-20), ballY(200)];
+      const x0 = Math.min(...xs);
+      const y0 = Math.min(...ys);
+      overlay.fillStyle = fits ? 'rgba(80, 220, 120, 0.25)' : `hsla(${hue}, 80%, 60%, 0.13)`;
+      overlay.strokeStyle = fits ? 'rgba(80, 220, 120, 0.9)' : `hsla(${hue}, 80%, 70%, 0.7)`;
+      overlay.fillRect(x0, y0, Math.abs(xs[1] - xs[0]), Math.abs(ys[1] - ys[0]));
+      overlay.strokeRect(x0 + 0.5, y0 + 0.5, Math.abs(xs[1] - xs[0]), Math.abs(ys[1] - ys[0]));
+    });
+    overlay.fillStyle = fits ? '#7ff0a0' : `hsl(${hue}, 80%, 75%)`;
+    overlay.fillText(`${name}${ctx.t !== undefined ? ` t${ctx.t}` : ''}${fits ? ' ✓' : ''}`, 10, overlay.canvas.height - 12 - i * 14);
+  });
 }
 
 // A pad in the corner: what is held lit in its colour; A or B the tick took after it was let go,
@@ -221,7 +274,7 @@ function load(planName) {
   runPlan(plan, frames, () => {}, (s, info) => {
     timeline.push({
       s: structuredClone(s), pose: info.pose, facing: info.facing, held: heldAt(plan, info.frame),
-      input: info.input, sounds: info.input ? [...s.sounds] : [],
+      input: info.input, sounds: info.input ? [...s.sounds] : [], events: info.input ? structuredClone(s.events) : [],
     });
   });
   findPresses();
@@ -374,6 +427,7 @@ document.addEventListener('keydown', (event) => {
   keys[event.code]();
 });
 $('#marks').addEventListener('change', redraw);
+$('#reach').addEventListener('change', redraw);
 $('#zoom').addEventListener('change', redraw);
 
 // --- The overview: the whole plan ---
@@ -475,7 +529,7 @@ function drawDetail() {
   ctx.font = '10px ui-monospace, Consolas, monospace';
   // Rows' names.
   ctx.fillStyle = '#8a909c';
-  [['in', ROWS.input + 12], ['mode', ROWS.mode + 8], ['act', ROWS.action + 10], ['snd', ROWS.sounds + 9], ['mark', ROWS.marks + 8],
+  [['in', ROWS.input + 12], ['mode', ROWS.mode + 8], ['act', ROWS.action + 10], ['evt', ROWS.sounds + 9], ['mark', ROWS.marks + 8],
     ['z', ROWS.height + 16], ['pose', ROWS.poses + 12], ['ball', ROWS.ball + 10]].forEach(([t, y]) => ctx.fillText(t, 0, y));
   // The current frame; the ticks (every 3rd frame) as faint lines; a ruler every 30 frames.
   ctx.fillStyle = 'rgba(255, 211, 77, 0.15)';
@@ -501,10 +555,10 @@ function drawDetail() {
       const before = timeline[f - 1]?.s.player.action;
       if (f === from || !before || before.name !== p.action.name || before.t > p.action.t) labels.push([p.action.name, x(f)]);
     }
-    entry.sounds.forEach((s, k) => {
-      ctx.fillStyle = SOUND_COLORS[s] ?? '#fff';
+    entry.events.forEach((e, k) => {
+      ctx.fillStyle = SOUND_COLORS[e.type] ?? '#fff';
       ctx.fillRect(x(f), ROWS.sounds + 1 + k * 12, Math.max(2, cw), 9);
-      ctx.fillText(s, x(f) + Math.max(3, cw + 2), ROWS.sounds + 9 + k * 12);
+      ctx.fillText(`${e.type}${e.by ? ` ${e.by}` : ''}`, x(f) + Math.max(3, cw + 2), ROWS.sounds + 9 + k * 12);
     });
   }
   ctx.fillStyle = '#fff';
@@ -743,6 +797,9 @@ function actionText(a) {
   return `${a.name} ${a.t}/${total}${a.hitTick !== null ? ` hit@${a.hitTick}` : ''}${flags.length ? ` (${flags.join(', ')})` : ''}`;
 }
 
+// An event of the tick's record: what, what did it, where the ball was from him.
+const eventText = (e) => `${e.type}${e.by ? ` ${e.by}` : ''} (${e.dx}, ${e.dz})`;
+
 function showState(entry, prevEntry) {
   const { s, pose, facing, held, input, sounds } = entry;
   const prev = prevEntry?.s;
@@ -756,6 +813,7 @@ function showState(entry, prevEntry) {
       <dt>held</dt><dd class="tags">${tags(heldList)}</dd>
       <dt>tick</dt><dd class="tags">${tickList ? tags(tickList) : 'between ticks'}</dd>
       <dt>sounds</dt><dd class="tags">${tags(sounds)}</dd>
+      <dt>events</dt><dd>${entry.events.map(eventText).map(escape).join('<br>') || '—'}</dd>
       <dt>pose</dt><dd>${pose} ${POSE_NAMES[pose] ?? ''} (${facing})</dd>
       <dt>action</dt><dd>${escape(actionText(player.action))}</dd>
     </dl>
