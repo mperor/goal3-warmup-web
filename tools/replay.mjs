@@ -27,6 +27,8 @@ export function runScenario({ ticks, frames }, sc) {
   merge(s.player, sc.player ?? {});
   if (sc.tapAgo !== undefined) s.player.input.tapTick = t0.it - sc.tapAgo;
   Object.assign(s.ball, { z: t0.bz < 1 ? 0 : t0.bz, vx: t0.bvx, vz: t0.bvz, hang: t0.hang });
+  // The ball's relation as the player's state says, unless the scenario gives it.
+  s.contact = s.player.onBall ? { kind: 'ridden', frac: 0 } : s.player.hasBall ? { kind: 'feet' } : { kind: 'free' };
   Object.assign(s, sc.practice);
   framePlayer(s.player);
   const off = [];
