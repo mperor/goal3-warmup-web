@@ -52,10 +52,11 @@ function broken(s, { pose }) {
   if (b.x < -32 || b.x > 288) out.push(`ball far off the screen at x ${b.x}`);
   if (!(pose >= 0 && pose < PLAYER_POSES.length)) out.push(`no such pose ${pose}`);
   if (!(b.frame >= 0 && b.frame < BALL_FRAMES.length)) out.push(`no such ball frame ${b.frame}`);
-  // One relation with the ball at a time (a trap carried into a jump is the known case below).
-  const trapping = p.trapping && p.mode !== 'air';
-  const relations = [p.hasBall && 'hasBall', p.onBall && 'onBall', s.headRide && 'headRide', trapping && 'trapping'].filter(Boolean);
-  if (relations.length > 1) out.push(`the ball is ${relations.join(' and ')} at once`);
+  // The player's view of the ball agrees with the world's one relation (practice.js, contact).
+  const kind = s.contact.kind;
+  if (p.hasBall !== (kind === 'feet') || p.onBall !== (kind === 'ridden') || p.trapping !== (kind === 'trapped')) {
+    out.push(`the ball is ${kind}, the player has hasBall ${p.hasBall}, onBall ${p.onBall}, trapping ${p.trapping}`);
+  }
   if (p.hasBall && !p.onBall && Math.abs(b.x - p.x) > 20) out.push(`has the ball ${(b.x - p.x).toFixed(1)} px away`);
   if (p.onBall && Math.abs(b.x - p.x) > 2) out.push(`rides a ball ${(b.x - p.x).toFixed(1)} px away`);
   if (p.onBall && p.mode !== 'land' && p.z !== 13 && p.z !== 9) out.push(`on the ball at height ${p.z}`);
@@ -109,8 +110,8 @@ function jsonUnsafe(o, path = '') {
 
 test('the state keeps the fields it starts with, and goes through JSON unchanged', () => {
   const start = createPractice(START.playerX, START.ballX);
-  // headRide and curve hold an object or null: only their presence is fixed.
-  const fixed = (keys) => keys.filter((k) => !/^(headRide|ball\.curve)\./.test(k)).sort();
+  // contact and curve hold what their state needs: only their presence is fixed.
+  const fixed = (keys) => keys.filter((k) => !/^(contact|ball\.curve)\./.test(k)).sort();
   const expected = fixed(shape(start));
   assert.deepEqual(firstFailures((s) => {
     const out = [];
