@@ -24,7 +24,8 @@ export const PLANS = {
   'run-left-bicycle': [320, [[5, 45, 'R'], ...doubleTap(80, 'L'), [90, 150, 'L'], ...tap(150, 'AB'), ...tap(162, 'LB')]],
   'air-kicks-without-ball': [700, [...tap(10, 'A'), ...tap(90, 'AB'), ...tap(102, 'A'), ...tap(240, 'AB'), ...tap(252, 'LB'), ...tap(390, 'AB'), ...tap(402, 'RB'), ...tap(540, 'AB'), ...tap(552, 'B')]],
   'head-ride': [260, [...tap(31, 'AB'), ...tap(96, 'AB')]],
-  'dive-crawl-dive': [500, [...tap(10, 'A'), [60, 70, 'L'], [100, 102, 'L'], ...tap(100, 'B'), [180, 220, 'R'], ...tap(260, 'RB')]],
+  // A dive, pushing along on his front, a dive again; the direction held on as each B goes (as the original).
+  'dive-crawl-dive': [320, [...tap(10, 'A'), [60, 70, 'L'], [100, 108, 'L'], ...tap(100, 'B'), [144, 154, 'R'], [200, 208, 'R'], ...tap(200, 'B')]],
   'mount-ride-flick': [700, [...tap(10, 'A'), [300, 390, 'R'], ...tap(330, 'AB'), ...doubleTap(420, 'R'), [432, 500, 'R'], ...tap(519, 'RAB', 6)]],
   'keep-up-behind': [260, [...tap(31, 'AB'), [45, 63, 'R'], ...tap(142, 'A')]],
   'flick': [200, [[20, 60, 'R'], ...tap(40, 'RAB')]],
