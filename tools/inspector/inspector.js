@@ -149,6 +149,7 @@ function load(planName) {
       input: info.input, sounds: info.input ? [...s.sounds] : [],
     });
   });
+  findPresses();
   $('#plan-text').value = JSON.stringify({ frames, plan });
   $('#frame').max = String(timeline.length - 1);
   $('#delete').disabled = !plans[name].own;
@@ -174,6 +175,41 @@ $('#delete').addEventListener('click', () => {
   fillPlans(first);
   load(first);
 });
+
+// Every press of each button: { start, end } in frames, whether it is a tap, the first of a
+// double tap, taken by a tick only after it was let go (takenAt), or seen by no tick at all.
+let presses = {};
+const DIRECTIONS = ['left', 'right', 'up', 'down'];
+
+function findPresses() {
+  presses = Object.fromEntries(BUTTONS.map(([, key]) => [key, []]));
+  for (const [, key] of BUTTONS) {
+    const list = presses[key];
+    // A tick reads a direction only while it is held; A or B also on the first tick after.
+    const reach = DIRECTIONS.includes(key) ? 0 : FRAMES_PER_TICK;
+    for (let f = 0; f < timeline.length; f++) {
+      if (!timeline[f].held[key] || timeline[f - 1]?.held[key]) continue;
+      let end = f + 1;
+      while (end < timeline.length && timeline[end].held[key]) end += 1;
+      let seen = false;
+      let takenAt = null;
+      for (let t = f; t < Math.min(timeline.length, end + reach); t++) {
+        if (!timeline[t].input?.[key]) continue;
+        seen = true;
+        if (t >= end) takenAt = t;
+        break;
+      }
+      list.push({ start: f, end, tap: end - f <= TAP_FRAMES, missed: !seen, takenAt, double: false });
+      f = end - 1;
+    }
+    if (DIRECTIONS.includes(key)) {
+      list.forEach((pr, i) => {
+        const next = list[i + 1];
+        pr.double = Boolean(next && pr.tap && next.start - pr.start <= DOUBLE_TAP_FRAMES);
+      });
+    }
+  }
+}
 
 function seek(frame, { sounds = false } = {}) {
   const to = Math.max(0, Math.min(timeline.length - 1, frame));
@@ -339,7 +375,11 @@ scrubbing(strip, (x) => Math.round((x / strip.clientWidth) * (timeline.length - 
 
 const detail = $('#detail');
 const GUTTER = 30;
-const ROWS = { buttons: 16, mode: 86, action: 98, sounds: 116, marks: 142, poses: 156 };
+const ROWS = { input: 18, notes: 38, mode: 54, action: 66, sounds: 84, marks: 110, poses: 124 };
+// A press this short is a tap; two taps of a direction this close a double tap (6 ticks, as the
+// game counts them: DOUBLE_TAP_TICKS in js/game/player.js).
+const TAP_FRAMES = 6;
+const DOUBLE_TAP_FRAMES = 6 * FRAMES_PER_TICK;
 
 function detailWindow() {
   const size = Math.min(Number($('#zoom').value), timeline.length);
@@ -355,8 +395,8 @@ function drawDetail() {
   ctx.font = '10px ui-monospace, Consolas, monospace';
   // Rows' names.
   ctx.fillStyle = '#8a909c';
-  BUTTONS.forEach(([label], i) => ctx.fillText(label, 8, ROWS.buttons + i * 11 + 9));
-  [['mode', ROWS.mode + 8], ['act', ROWS.action + 10], ['snd', ROWS.sounds + 9], ['mark', ROWS.marks + 8], ['pose', ROWS.poses + 12]].forEach(([t, y]) => ctx.fillText(t, 0, y));
+  [['in', ROWS.input + 12], ['mode', ROWS.mode + 8], ['act', ROWS.action + 10], ['snd', ROWS.sounds + 9], ['mark', ROWS.marks + 8], ['pose', ROWS.poses + 12]]
+    .forEach(([t, y]) => ctx.fillText(t, 0, y));
   // The current frame; the ticks (every 3rd frame) as faint lines; a ruler every 30 frames.
   ctx.fillStyle = 'rgba(255, 211, 77, 0.15)';
   ctx.fillRect(x(current), 0, cw, detail.height);
@@ -365,24 +405,13 @@ function drawDetail() {
     const entry = timeline[f];
     if (entry.input) {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
-      ctx.fillRect(x(f), ROWS.buttons, 1, ROWS.poses - ROWS.buttons);
+      ctx.fillRect(x(f), ROWS.input, 1, ROWS.poses - ROWS.input);
     }
     if (f % 30 === 0) {
       ctx.fillStyle = '#8a909c';
       ctx.fillText(String(f), x(f) + 2, 10);
       ctx.fillRect(x(f), 12, 1, 4);
     }
-    // What is held on the frame; a press of A or B the tick took after it was let go, outlined.
-    BUTTONS.forEach(([, key, color], i) => {
-      const y = ROWS.buttons + i * 11;
-      if (entry.held[key]) {
-        ctx.fillStyle = color;
-        ctx.fillRect(x(f), y, Math.max(1, cw - 0.5), 9);
-      } else if (entry.input?.[key]) {
-        ctx.strokeStyle = color;
-        ctx.strokeRect(x(f) + 0.5, y + 0.5, Math.max(1, cw - 1.5), 8);
-      }
-    });
     const p = entry.s.player;
     ctx.fillStyle = MODE_COLORS[p.mode] ?? '#666';
     ctx.fillRect(x(f), ROWS.mode, Math.ceil(cw), 8);
@@ -400,6 +429,7 @@ function drawDetail() {
   }
   ctx.fillStyle = '#fff';
   labels.forEach(([text, at]) => ctx.fillText(text, at + 2, ROWS.action + 10));
+  drawInput(ctx, from, to, x, cw);
   plans[name].marks.filter(({ frame }) => frame >= from && frame < to).forEach(({ frame }) => flag(ctx, x(frame), ROWS.marks, 10));
   // The pose on each tick, as drawn then (the current one framed).
   const size = Math.max(12, Math.min(40, cw * FRAMES_PER_TICK - 2));
@@ -415,6 +445,62 @@ function drawDetail() {
   }
 }
 
+// The buttons in one row: a bar for each combination held, a stripe and a letter per button.
+// Under it: taps (short presses), double taps of a direction, presses of A or B the tick took
+// after they were let go, and presses no tick saw (a direction let go between two ticks).
+function drawInput(ctx, from, to, x, cw) {
+  const chord = (f) => BUTTONS.filter(([, key]) => timeline[f].held[key]);
+  const letters = (held) => held.map(([l]) => l).join('');
+  for (let f = from; f < to;) {
+    const held = chord(f);
+    let end = f + 1;
+    while (end < to && letters(chord(end)) === letters(held)) end += 1;
+    if (held.length) {
+      const w = (end - f) * cw;
+      const h = 18 / held.length;
+      held.forEach(([, , color], i) => {
+        ctx.fillStyle = color;
+        ctx.fillRect(x(f), ROWS.input + i * h, Math.max(1, w - 1), h);
+      });
+      const text = letters(held);
+      const tw = ctx.measureText(text).width;
+      if (tw + 2 <= w) {
+        ctx.fillStyle = '#111';
+        ctx.fillText(text, x(f) + (w - tw) / 2, ROWS.input + 13);
+      }
+    }
+    f = end;
+  }
+  for (const [label, key, color] of BUTTONS) {
+    const list = presses[key].filter((pr) => pr.end > from && pr.start < to);
+    list.forEach((pr, i) => {
+      const mid = x(pr.start) + ((pr.end - pr.start) * cw) / 2;
+      if (pr.missed) {
+        ctx.fillStyle = '#ff5a5a';
+        ctx.fillText(`✕${label}`, x(pr.start), ROWS.notes + 9);
+      } else if (pr.tap) {
+        ctx.fillStyle = color;
+        ctx.fillText('tap', mid - 8, ROWS.notes + 9);
+      }
+      if (pr.takenAt !== null && pr.takenAt >= from && pr.takenAt < to) {
+        ctx.strokeStyle = color;
+        ctx.strokeRect(x(pr.takenAt) + 0.5, ROWS.input + 0.5, Math.max(4, cw - 1), 17);
+      }
+      const next = list[i + 1];
+      if (pr.double && next) {
+        const end = x(next.start) + ((next.end - next.start) * cw) / 2;
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(mid, ROWS.input - 1);
+        ctx.quadraticCurveTo((mid + end) / 2, ROWS.input - 12, end, ROWS.input - 1);
+        ctx.stroke();
+        ctx.fillStyle = color;
+        ctx.fillText('2×', (mid + end) / 2 - 6, ROWS.input - 7);
+      }
+    });
+  }
+}
+
 scrubbing(detail, (px) => {
   const [from, to] = detailWindow();
   return from + Math.floor(((px - GUTTER) / (detail.clientWidth - GUTTER)) * (to - from));
@@ -425,7 +511,11 @@ $('#legend').innerHTML = [
   ...Object.entries(MODE_COLORS).map(([mode, color]) => `<span><i style="background:${color}"></i>${mode}</span>`),
   ...Object.entries(SOUND_COLORS).map(([s, color]) => `<span><i style="background:${color}"></i>${s}</span>`),
   `<span><i style="background:${MARK_COLOR}"></i>mark</span>`,
-  '<span><i class="outlined"></i>A/B outlined: let go before the tick, still taken by it</span>',
+  '<br><span><b>in</b>: what is held, a stripe and a letter per button</span>',
+  '<span><b>tap</b> a short press</span>',
+  '<span><b>2×</b> a double tap (a run, a boost, a feint)</span>',
+  '<span><i class="outlined"></i>let go before the tick, still taken by it</span>',
+  '<span><b style="color:#ff5a5a">✕</b> no tick saw it</span>',
 ].join('');
 
 // --- Marks: moments that look wrong, with a note ---
