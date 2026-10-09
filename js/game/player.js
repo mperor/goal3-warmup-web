@@ -695,6 +695,89 @@ function kick(p) {
   return event;
 }
 
+// --- What the world tells the player ---
+// The practice (js/game/practice.js) decides what the ball does to him; these carry it out, so the
+// player's state is changed in this file only.
+
+// A trap brakes the player to a stop this much per tick.
+const TRAP_BRAKE = 1;
+// Knocking the ball up on the run shows its pose this long.
+const JUGGLE_POSE_TICKS = 3;
+
+// What he sees of the ball before anyone moves this tick: the x of a ball lying below to land on
+// (or null), and whether one is high enough to volley.
+export function seeBall(p, { below, high }) {
+  p.ballBelow = below;
+  p.ballHigh = high;
+}
+
+// Caught in the air.
+export function catchBall(p) {
+  p.hasBall = true;
+}
+
+// Taken at the feet or in a jump; out of a trap he stands a tick more (and may turn).
+export function takeBall(p) {
+  p.hasBall = true;
+  if (p.trapping) {
+    p.settleTicks = 1;
+    p.look.trapCaught = true;
+  }
+  p.trapping = false;
+}
+
+// Kicked or lifted off his feet.
+export function loseBall(p) {
+  p.hasBall = false;
+}
+
+// The action under way met the ball: it goes through without stopping it again.
+export function struckBall(p) {
+  if (p.action) p.action.struck = true;
+}
+
+// B on the ground kicks towards the goal on the right, whichever way he faced.
+export function faceGoal(p) {
+  p.facing = 'right';
+}
+
+// A or B alone on the ground, the kick the practice chose for the ball he has or sees.
+export function startGroundKick(p, name) {
+  startAction(p, name);
+  p.trapping = false;
+  groundAction(p, []);
+}
+
+// Knocked the ball up on the run: he keeps the speed he had (a boost ends there), and taps before
+// it do not make a double tap with ones after.
+export function juggled(p, { vx, x, low }) {
+  p.vx = vx;
+  p.x = x;
+  p.run.boost = 0;
+  p.run.sprinting = false;
+  p.juggleTicks = JUGGLE_POSE_TICKS;
+  p.input.tapTick = null;
+  p.look.juggleLow = low;
+}
+
+export function setTrapping(p, on) {
+  p.trapping = on;
+}
+
+// A trap starting, judged before either moved: he turns to the ball and brakes from the speed he
+// had (keeping a push off a wall).
+export function startTrap(p, { low, facing, x, vx }) {
+  p.look.trapLow = low;
+  p.facing = facing;
+  const push = p.x - x - p.vx;
+  p.vx = approachZero(vx, TRAP_BRAKE);
+  p.x = x + p.vx + push;
+}
+
+export function faceBall(p, facing) {
+  p.facing = facing;
+}
+
 // Running, not boosting (Up or Down held slows it down).
 export function isRunning(p) {
   return p.mode === 'run' && !p.run.sprinting;
