@@ -33,7 +33,7 @@ function saveMuted(muted) {
 
 // The original's music and sound effects, played by an emulated NES sound chip. Browsers only
 // allow sound after a user gesture, so it starts on the first key press or click.
-// music: whether the song plays (tools/inspector plays the effects alone).
+// music: whether the song plays (false: the effects alone, setMusic turns it on).
 export function createSound({ music = true } = {}) {
   let context = null;
   let gain = null;
