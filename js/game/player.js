@@ -77,7 +77,7 @@ export const ANIMATIONS = {
 
 // Scripted actions: [pose, ticks] steps, and events emitted at a tick index (0 = the first tick).
 // An action is drawn from the end of its first tick, so the first step lasts one tick more.
-// A `strike` action emits 'strike:<kind>:<tick>' on every tick after the first until the ball is hit.
+// A `strike` action emits { type: 'strike', kind, t } on every tick after the first until the ball is hit.
 // An action with `hits` emits its event on every tick of that window until the ball is hit.
 export const ACTIONS = {
   // A press on its last ticks is kept for when it is over (B there: a volley at the ball coming down).
@@ -225,12 +225,12 @@ export function startAction(p, name) {
 function runAction(p, events) {
   const a = p.action;
   if (!a) return;
-  if (a.events[a.t]) events.push(a.events[a.t]);
-  if (a.strike && a.t > 0 && !a.struck) events.push(`strike:${a.strike}:${a.t}`);
+  if (a.events[a.t]) events.push({ type: a.events[a.t] });
+  if (a.strike && a.t > 0 && !a.struck) events.push({ type: 'strike', kind: a.strike, t: a.t });
   const h = a.hits;
   if (h && !a.struck && a.t >= h.from && a.t <= h.to && !h.skip?.includes(a.t)) {
     a.hitTick = a.t;
-    events.push(h.event);
+    events.push({ type: h.event });
   }
   a.t += 1;
   if (a.t >= a.steps.reduce((n, [, ticks]) => n + ticks, 0)) {
@@ -466,7 +466,7 @@ function groundTick(p, dir, pressed, verticalKey) {
   moveX(p);
 }
 
-// Advances one logic tick; returns the ball events of this tick ('lift', 'hit', ...).
+// Advances one logic tick; returns what it asks of the ball this tick ({ type: 'lift' }, ...).
 export function tickPlayer(p, input) {
   const dir = input.left === input.right ? 0 : input.left ? -1 : 1;
   const pressed = dir !== 0 && dir !== p.input.prevDir;
@@ -578,14 +578,14 @@ export function tickPlayer(p, input) {
     p.air.actionUsed = true;
     startAction(p, 'flick');
     groundAction(p, events);
-    return ['offBall', ...events];
+    return [{ type: 'offBall' }, ...events];
   }
   if (abPressed && p.onBall) {
     // Without one: jump off and let the ball roll on.
     p.onBall = false;
     jump(p);
     airTick(p, 0, false, false, events);
-    return ['offBall', ...events];
+    return [{ type: 'offBall' }, ...events];
   }
   // Standing with the ball (or coming to a stop) A+B lifts it; with a direction, Up or Down held
   // the player jumps with it.
@@ -688,7 +688,7 @@ function diveTick(p, dir, events) {
       p.vz = 0;
       p.dive.landed = true;
     }
-    events.push('dive');
+    events.push({ type: 'dive' });
   } else if (p.dive.pushTicks > 0) {
     p.dive.pushTicks -= 1;
     p.vx = CRAWL_SPEED * p.dive.crawlDir;
@@ -710,11 +710,11 @@ function diveTick(p, dir, events) {
 const kickReady = (p) => p.press.button && (p.mode === 'walk' || p.mode === 'run')
   && (since(p, p.input.abTick) > AB_WINDOW_TICKS || p.press.released || (p.press.button === 'ab' && p.press.queued));
 
-// The A+B window has passed with one button: the caller picks the action ('kickA' / 'kickB').
+// The A+B window has passed with one button: the caller picks the action ({ type: 'groundKick', button }).
 // The kick faces the direction held with the button, even if a skid came in between; the
 // direction and Up or Down held with it stay in kickDir and kickVertical for the caller.
 function kick(p) {
-  const event = p.press.button === 'a' ? 'kickA' : 'kickB';
+  const event = { type: 'groundKick', button: p.press.button === 'a' ? 'a' : 'b' };
   if (p.press.dir !== 0) p.facing = p.press.dir < 0 ? 'left' : 'right';
   p.kick.dir = p.press.dir;
   p.kick.vertical = p.press.vertical;
