@@ -8,7 +8,7 @@ import { createRenderer } from '../../js/game/render.js';
 import { createRun, FRAMES_PER_TICK, heldAt, planOf, runPlan, stepFrame } from '../../tests/harness.mjs';
 import { PLANS } from '../../tests/plans.mjs';
 import { initCatalog } from './catalog.js';
-import { drawPose, escape, FRAME_MS, POSE_NAMES } from './shared.js';
+import { drawBall, drawPose, escape, FRAME_MS, POSE_NAMES } from './shared.js';
 
 const $ = (selector) => document.querySelector(selector);
 const SCALE = 3;
@@ -133,6 +133,81 @@ function draw(s, pose, facing) {
   overlay.shadowBlur = 0;
 }
 
+// A pad in the corner: what is held lit in its colour; A or B the tick took after it was let go,
+// outlined (as in the timeline).
+function drawPad(held, input) {
+  const ox = 12;
+  const oy = 12;
+  const c = 16;
+  overlay.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  overlay.fillRect(ox - 6, oy - 6, 140, c * 3 + 12);
+  const color = (key) => BUTTONS.find(([, k]) => k === key)[2];
+  const button = (key, label, draw) => {
+    overlay.fillStyle = held[key] ? color(key) : 'rgba(255, 255, 255, 0.12)';
+    draw();
+    overlay.fill();
+    if (!held[key] && input?.[key]) {
+      overlay.strokeStyle = color(key);
+      overlay.lineWidth = 2;
+      draw();
+      overlay.stroke();
+    }
+    return label;
+  };
+  const cell = (key, label, cx, cy) => {
+    button(key, label, () => {
+      overlay.beginPath();
+      overlay.rect(ox + cx * c, oy + cy * c, c, c);
+    });
+    overlay.fillStyle = held[key] ? '#111' : '#8a909c';
+    overlay.fillText(label, ox + cx * c + 4, oy + cy * c + 12);
+  };
+  overlay.font = '11px ui-monospace, Consolas, monospace';
+  cell('up', 'U', 1, 0);
+  cell('left', 'L', 0, 1);
+  cell('right', 'R', 2, 1);
+  cell('down', 'D', 1, 2);
+  const round = (key, label, cx) => {
+    button(key, label, () => {
+      overlay.beginPath();
+      overlay.arc(ox + cx, oy + c * 1.5, 12, 0, Math.PI * 2);
+    });
+    overlay.fillStyle = held[key] ? '#111' : '#8a909c';
+    overlay.fillText(label, ox + cx - 3, oy + c * 1.5 + 4);
+  };
+  round('b', 'B', 82);
+  round('a', 'A', 114);
+  overlay.lineWidth = 2;
+}
+
+// The latest presses (up to two seconds back), newest first: tap, double tap, held, taken by a
+// tick after it was let go, or seen by none.
+function drawLatest() {
+  const latest = BUTTONS.flatMap(([label, key, color]) => presses[key].map((pr, i) => ({ ...pr, label, color, after: presses[key][i - 1] })))
+    .filter((pr) => pr.start <= current && current - pr.start <= 120)
+    .sort((a, b) => b.start - a.start)
+    .slice(0, 6);
+  if (!latest.length) return;
+  const w = 230;
+  const ox = overlay.canvas.width - w - 10;
+  overlay.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  overlay.fillRect(ox, 6, w, 12 + latest.length * 15);
+  overlay.font = '12px ui-monospace, Consolas, monospace';
+  latest.forEach((pr, i) => {
+    let what;
+    if (pr.missed) what = 'not seen by any tick';
+    else if (pr.end > current) what = `held ${current - pr.start + 1}f`;
+    else if (pr.tap) what = 'tap';
+    else what = `held ${pr.end - pr.start}f`;
+    if (pr.after?.double) what += ', 2× (double tap)';
+    if (pr.takenAt !== null && pr.takenAt <= current) what += ', taken after';
+    overlay.fillStyle = pr.missed ? '#ff5a5a' : pr.color;
+    overlay.fillText(`${pr.label}  ${what}`, ox + 8, 20 + i * 15);
+    overlay.fillStyle = '#8a909c';
+    overlay.fillText(`${current - pr.start}f ago`, ox + w - 62, 20 + i * 15);
+  });
+}
+
 // --- The timeline: one entry per frame ---
 
 let name = null;
@@ -224,6 +299,10 @@ function redraw() {
   const entry = timeline[current];
   if (!entry || $('#timeline').hidden) return;
   draw(entry.s, entry.pose, entry.facing);
+  if ($('#marks').checked) {
+    drawPad(entry.held, entry.input);
+    drawLatest();
+  }
   $('#frame').value = String(current);
   const tick = Math.floor(current / FRAMES_PER_TICK);
   $('#position').textContent = `frame ${current} · tick ${tick} · ${(current / 60).toFixed(2)} s`;
@@ -375,7 +454,8 @@ scrubbing(strip, (x) => Math.round((x / strip.clientWidth) * (timeline.length - 
 
 const detail = $('#detail');
 const GUTTER = 30;
-const ROWS = { input: 18, notes: 38, mode: 54, action: 66, sounds: 84, marks: 110, poses: 124 };
+const ROWS = { input: 18, notes: 38, mode: 54, action: 66, sounds: 84, marks: 110, height: 124, poses: 154, ball: 198 };
+const HEIGHT_PX = 26; // the height row: 0 to 104 px up, 4 px a row pixel
 // A press this short is a tap; two taps of a direction this close a double tap (6 ticks, as the
 // game counts them: DOUBLE_TAP_TICKS in js/game/player.js).
 const TAP_FRAMES = 6;
@@ -395,8 +475,8 @@ function drawDetail() {
   ctx.font = '10px ui-monospace, Consolas, monospace';
   // Rows' names.
   ctx.fillStyle = '#8a909c';
-  [['in', ROWS.input + 12], ['mode', ROWS.mode + 8], ['act', ROWS.action + 10], ['snd', ROWS.sounds + 9], ['mark', ROWS.marks + 8], ['pose', ROWS.poses + 12]]
-    .forEach(([t, y]) => ctx.fillText(t, 0, y));
+  [['in', ROWS.input + 12], ['mode', ROWS.mode + 8], ['act', ROWS.action + 10], ['snd', ROWS.sounds + 9], ['mark', ROWS.marks + 8],
+    ['z', ROWS.height + 16], ['pose', ROWS.poses + 12], ['ball', ROWS.ball + 10]].forEach(([t, y]) => ctx.fillText(t, 0, y));
   // The current frame; the ticks (every 3rd frame) as faint lines; a ruler every 30 frames.
   ctx.fillStyle = 'rgba(255, 211, 77, 0.15)';
   ctx.fillRect(x(current), 0, cw, detail.height);
@@ -430,6 +510,7 @@ function drawDetail() {
   ctx.fillStyle = '#fff';
   labels.forEach(([text, at]) => ctx.fillText(text, at + 2, ROWS.action + 10));
   drawInput(ctx, from, to, x, cw);
+  drawHeights(ctx, from, to, x, cw);
   plans[name].marks.filter(({ frame }) => frame >= from && frame < to).forEach(({ frame }) => flag(ctx, x(frame), ROWS.marks, 10));
   // The pose on each tick, as drawn then (the current one framed).
   const size = Math.max(12, Math.min(40, cw * FRAMES_PER_TICK - 2));
@@ -442,7 +523,29 @@ function drawDetail() {
       ctx.strokeRect(x(f) + 0.5, ROWS.poses + 0.5, size, size);
     }
     drawPose(ctx, entry.pose, { mirror: entry.facing === 'right', x: x(f), y: ROWS.poses, size });
+    drawBall(ctx, entry.s.ball.frame, { x: x(f), y: ROWS.ball, size: Math.min(size, 24) });
   }
+}
+
+// How high the player (yellow) and the ball (red) are, frame by frame: where the lines meet,
+// the ball is at his height; the ground is the bottom line.
+function drawHeights(ctx, from, to, x, cw) {
+  const y = (z) => ROWS.height + HEIGHT_PX - Math.min(HEIGHT_PX, z / 4);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.fillRect(GUTTER, ROWS.height + HEIGHT_PX, detail.width - GUTTER, 1);
+  for (const [color, z] of [['#ffd34d', (s) => s.player.z], ['#ff5a5a', (s) => s.ball.z]]) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let f = from; f < to; f++) {
+      const at = x(f) + cw / 2;
+      const v = y(z(timeline[f].s));
+      if (f === from) ctx.moveTo(at, v);
+      else ctx.lineTo(at, v);
+    }
+    ctx.stroke();
+  }
+  ctx.lineWidth = 1;
 }
 
 // The buttons in one row: a bar for each combination held, a stripe and a letter per button.
@@ -703,6 +806,8 @@ function recordLoop(now) {
     render.clear();
     render.player(r.run.s.player.x, r.run.s.player.z, info.pose, info.facing);
     render.ball(r.run.s.ball.x, r.run.s.ball.z, r.run.s.ball.frame);
+    overlay.clearRect(0, 0, overlay.canvas.width, overlay.canvas.height);
+    drawPad(r.held[r.held.length - 1], null);
     $('#recording').textContent = `● REC ${(r.held.length / 60).toFixed(1)} s${r.marks.length ? ` ⚑${r.marks.length}` : ''}`;
   }
   if (r.held.length >= MAX_RECORD_FRAMES) stopRecording();

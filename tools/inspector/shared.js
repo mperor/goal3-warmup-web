@@ -1,5 +1,5 @@
 // What the inspector's views share: pose names and drawing a pose on a canvas.
-import { PALETTES, PLAYER_POSES } from '../../js/art/sprites.js';
+import { BALL_FRAMES, PALETTES, PLAYER_POSES } from '../../js/art/sprites.js';
 import { POSE } from '../../js/game/player.js';
 import { paintParts } from '../../js/game/render.js';
 
@@ -26,6 +26,13 @@ export function drawPose(ctx, index, { mirror = true, x = 0, y = 0, size = BOX }
   const k = size / BOX;
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(sprite, x + Math.floor((BOX - sprite.width) / 2) * k, y + (BOX - sprite.height) * k, sprite.width * k, sprite.height * k);
+}
+
+// A frame of the ball's spin, `size` px across, its top left at (x, y).
+const balls = BALL_FRAMES.map((parts) => paintParts(parts, 16, 16, PALETTES.ball, false));
+export function drawBall(ctx, frame, { x = 0, y = 0, size = 16 } = {}) {
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(balls[frame], x, y, size, size);
 }
 
 export const escape = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
