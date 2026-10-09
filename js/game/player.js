@@ -122,6 +122,7 @@ export function createPlayer(x) {
       prevA: false,
       prevB: false,
       prevVertical: false,
+      upDown: null, // 'up' or 'down' held this tick
       vertical: false, // Up or Down held
       verticalTap: false, // Up or Down pressed alone, standing in for the facing direction
       stepped: false, // moved this tick by a direction held at the end of an action
@@ -132,7 +133,7 @@ export function createPlayer(x) {
       abTick: null, // when A or B was last pressed after neither was held
     },
     // A or B alone waiting out the A+B window before it acts.
-    press: { button: null, dir: 0, facing: 0, vertical: null, queued: false, released: false },
+    press: { button: null, dir: 0, facing: 0, queued: false, released: false },
     // The kick the window let go: the direction and Up or Down held with it.
     kick: { dir: 0, vertical: null },
     run: {
@@ -152,7 +153,6 @@ export function createPlayer(x) {
     dive: { landed: false, fromDive: false, crawlTicks: 0, crawlDir: 0, pushTicks: 0 },
     // With the ball (set by js/game/practice.js, which moves it).
     hasBall: false,
-    ballHigh: false, // high enough to volley
     ballBelow: null, // x of a ball lying below, to land on
     onBall: false, // standing on it
     rising: false, // getting up onto it
@@ -447,6 +447,7 @@ export function tickPlayer(p, input) {
   const verticalKey = vertical && !p.input.prevVertical ? (input.up ? 'up' : 'down') : null;
   p.input.prevVertical = vertical;
   p.input.vertical = vertical;
+  p.input.upDown = input.up ? 'up' : input.down ? 'down' : null;
   p.input.verticalTap = false;
   p.input.stepped = false;
   p.look.trapCaught = false;
@@ -465,7 +466,6 @@ export function tickPlayer(p, input) {
       p.press.facing = facingSign(p);
       // Pressed on an action's last ticks: kept until it is over, A+B then jumps straight away.
       p.press.queued = Boolean(p.action);
-      p.press.vertical = input.up ? 'up' : input.down ? 'down' : null;
     }
   } else if ((aEdge || bEdge) && p.press.button && p.press.button !== 'ab' && since(p, p.input.abTick) <= AB_WINDOW_TICKS) {
     // The other button within the window: A+B, e.g. pressed while still landing.
@@ -620,8 +620,9 @@ function startKick(p, events) {
     airTick(p, p.input.prevDir, false, false, events);
     return events;
   }
-  // Only the way he already faced when pressing B, and not at a ball high enough to volley.
-  if (p.press.button === 'b' && !p.hasBall && !p.ballHigh && p.press.dir !== 0 && p.press.dir === p.press.facing) {
+  // The way he faced when pressing B, still held as the kick goes, high ball or not (the original,
+  // tools/simulate.py: the dive-high-ball-far plan; let go a tick earlier he kicks instead).
+  if (p.press.button === 'b' && !p.hasBall && p.input.prevDir !== 0 && p.input.prevDir === p.press.facing) {
     p.press.button = null;
     dive(p);
     diveTick(p, p.input.prevDir, events);
@@ -688,13 +689,14 @@ const kickReady = (p) => p.press.button && (p.mode === 'walk' || p.mode === 'run
   && (since(p, p.input.abTick) > AB_WINDOW_TICKS || p.press.released || (p.press.button === 'ab' && p.press.queued));
 
 // The A+B window has passed with one button: the caller picks the action ({ type: 'groundKick', button }).
-// The kick faces the direction held with the button, even if a skid came in between; the
-// direction and Up or Down held with it stay in kickDir and kickVertical for the caller.
+// The kick faces the direction held with the button, even if a skid came in between; that
+// direction, and Up or Down held as the kick goes (the original, tools/simulate.py: the
+// pass-up-let-go plan), stay in kick.dir and kick.vertical for the caller.
 function kick(p) {
   const event = { type: 'groundKick', button: p.press.button === 'a' ? 'a' : 'b' };
   if (p.press.dir !== 0) p.facing = p.press.dir < 0 ? 'left' : 'right';
   p.kick.dir = p.press.dir;
-  p.kick.vertical = p.press.vertical;
+  p.kick.vertical = p.input.upDown;
   p.mode = 'walk';
   p.press.button = null;
   return event;
@@ -710,10 +712,9 @@ const TRAP_BRAKE = 1;
 const JUGGLE_POSE_TICKS = 3;
 
 // What he sees of the ball before anyone moves this tick: the x of a ball lying below to land on
-// (or null), and whether one is high enough to volley.
-export function seeBall(p, { below, high }) {
+// (or null).
+export function seeBall(p, { below }) {
   p.ballBelow = below;
-  p.ballHigh = high;
 }
 
 // Caught in the air.

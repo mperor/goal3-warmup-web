@@ -410,7 +410,6 @@ function look(s) {
     // A ball on the ground is something to land on, also rolling (recorded at ~1.1 px/tick
     // towards the player; the speed limit is a guess).
     below: !p.hasBall && b.z < 1 && b.vz === 0 && Math.abs(b.vx) < MOUNT_MAX_VX ? b.x : null,
-    high: Math.max(0, b.z + b.vz) >= VOLLEY_SHOT_MIN_Z,
   });
   return {
     // A ball in flight just ahead of a player in the air is caught.
