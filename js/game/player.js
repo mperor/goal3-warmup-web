@@ -1,4 +1,5 @@
 import { POSE } from './animation.js';
+import { REACH } from './reach.js';
 
 // Speeds are px per logic tick (3 frames), measured from a RAM dump of the original.
 const WALK_SPEED = 2.3125;
@@ -45,7 +46,6 @@ const CRAWL_SPEED = 4;
 // Riding the ball: dropping onto a ball lying still lands on it (crouched at MOUNT_Z), then the
 // player stands on top at RIDE_Z and the ball rolls under him; runs are a little slower there.
 // Measured with tools/simulate.py (the mount-* plans): 14.8 px away landed on it, 15.6 px missed.
-const MOUNT_DX = 15;
 const MOUNT_Z = 9;
 const RIDE_Z = 13;
 const RIDE_RUN_SPEED = 3.25;
@@ -283,7 +283,7 @@ function airTick(p, dir, aEdge, bEdge, events) {
 
   // Coming down onto a ball lying below, from its height down: he lands on it (it rolls under him).
   const top = p.ballBelow;
-  if (top !== null && !p.action && p.vz < 0 && p.z > 0 && p.z <= RIDE_Z && Math.abs(top - p.x) <= MOUNT_DX) {
+  if (top !== null && !p.action && p.vz < 0 && REACH.mount.fits({ dx: top - p.x, dz: -p.z })) {
     mount(p);
     return;
   }
