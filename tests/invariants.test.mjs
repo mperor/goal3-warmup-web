@@ -81,11 +81,9 @@ test(`${PLANS} random plans keep the rules on every tick`, () => {
   assert.deepEqual(firstFailures(broken), []);
 });
 
-// Known: jumping (A+B) while trapping a ball at the thigh leaves the trap flag set in the air, and
-// the ball, still high from the trap, counts as dropping onto his head. Nothing shows (the air
-// pose wins), but the state is not one there should be. What the original does there is not
-// recorded yet; to be settled with the player-ball state machine.
-test('a trap does not go on into a jump', { todo: 'trap flag left set when jumping out of a trap' }, () => {
+// A+B while trapping takes the ball first, as the original does (tools/simulate.py, trap-ab): it
+// used to leave the trap flag set in the air with the ball on his head.
+test('a trap does not go on into a jump', () => {
   assert.deepEqual(firstFailures((s) => (s.player.trapping && s.player.mode === 'air' ? ['trapping in the air'] : [])), []);
 });
 

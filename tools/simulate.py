@@ -135,6 +135,17 @@ PLANS = {
     # The same without the ball: a pass first (the ball flies off to the right wall).
     "run-up-held": (500, [*tap(10, "A", 2), (60, 70, "L"), *double_tap(130, "L"), (140, 200, "L"),
                           (200, 400, "U")]),
+    # A ball off the left wall trapped at the thigh, then A+B with the way he faces (frame 165): the
+    # trap ends with the ball at his feet and he flicks it, staying down. tests/plans.mjs, trap-ab,
+    # is the same a frame earlier (the tests tick on frames 0, 3, ..., the original on 1, 4, ...).
+    "trap-ab": (201, [(21, 25, "L"), (29, 33, "L"), (33, 82, "L"), (33, 35, "AB"), (38, 41, "BL"), (85, 89, "L"),
+                      (93, 97, "L"), (97, 134, "L"), (134, 138, "R"), (142, 146, "R"), (146, 200, "R"),
+                      (165, 167, "AB"), (173, 175, "A")]),
+    # Differences found by random play, for docs/fidelity.md: B with the way he faces and no ball,
+    # a high ball far off (the original dives, the game volleys); A with Up let go just before the
+    # kick (the original passes plainly, the game lobs into the depth).
+    "dive-high-ball-far": (130, [(20, 24, "A"), (61, 107, "R"), (86, 88, "AB"), (99, 101, "B")]),
+    "pass-up-let-go": (130, [(20, 22, "BR"), (72, 95, "U"), (92, 96, "A")]),
 }
 
 

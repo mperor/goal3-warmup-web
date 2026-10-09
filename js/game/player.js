@@ -559,25 +559,30 @@ export function tickPlayer(p, input) {
     airTick(p, 0, false, false, events);
     return [{ type: 'offBall' }, ...events];
   }
+  // A ball he is trapping counts as his for A+B (the original, tools/simulate.py: trap-ab and the
+  // random plans): lifted from where it is, or taken to his feet for anything else.
+  const fromTrap = abPressed && p.trapping;
+  const trapped = fromTrap ? [{ type: 'takeTrapped' }] : [];
+  const withBall = p.hasBall || fromTrap;
   // Standing with the ball (or coming to a stop) A+B lifts it; with a direction, Up or Down held
   // the player jumps with it.
-  if (abPressed && p.hasBall && p.mode === 'walk' && dir === 0 && !p.input.vertical) {
+  if (abPressed && withBall && p.mode === 'walk' && dir === 0 && !p.input.vertical) {
     startAction(p, 'lift');
     groundAction(p, events);
-    return events;
+    return [...(fromTrap ? [{ type: 'liftTrapped' }] : []), ...events];
   }
   // With the ball and the way he faces held (walking or running), A+B skids and flicks it up.
-  if (abPressed && p.hasBall && dir !== 0 && dir === facingSign(p) && !p.input.vertical) {
+  if (abPressed && withBall && dir !== 0 && dir === facingSign(p) && !p.input.vertical) {
     p.mode = 'walk';
     startAction(p, 'flick');
     groundAction(p, events);
-    return events;
+    return [...trapped, ...events];
   }
   if (abPressed) {
     if (p.mode === 'run' && wasSprinting && p.run.dir < 0 && (dir < 0 || lastDir < 0)) p.vx = BOOST_JUMP_LEFT_SPEED;
     jump(p);
     airTick(p, dir, false, false, events);
-    return events;
+    return [...trapped, ...events];
   }
 
   if (p.trapping && p.mode === 'walk') {
