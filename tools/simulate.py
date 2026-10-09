@@ -146,6 +146,11 @@ PLANS = {
     # kick (the original passes plainly, the game lobs into the depth).
     "dive-high-ball-far": (130, [(20, 24, "A"), (61, 107, "R"), (86, 88, "AB"), (99, 101, "B")]),
     "pass-up-let-go": (130, [(20, 22, "BR"), (72, 95, "U"), (92, 96, "A")]),
+    # B with Right walking after a high pass: Right let go before the next tick (a volley), held on
+    # through it (a dive); and under a ball lifted right above him, held on (a dive too).
+    "dive-let-go": (130, [(20, 24, "A"), (61, 103, "R"), (99, 101, "B")]),
+    "dive-held-on": (130, [(20, 24, "A"), (61, 104, "R"), (99, 101, "B")]),
+    "dive-under-high-ball": (130, [(31, 33, "AB"), (82, 98, "R"), (88, 90, "B")]),
 }
 
 
