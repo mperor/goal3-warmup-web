@@ -89,18 +89,28 @@ export function createPractice(playerX, ballX) {
     ball: createBall(ballX),
     events: [], // what happened in the last tick, each with what did it (see note)
     sounds: [], // the sound effects of the last tick, from its events
-    noCapture: 0, // ticks after a kick before the ball can be taken again
     ballSteps: 1, // moves of the ball this tick (0 or 2 where the original holds it back a tick)
-    rideFrac: 0, // the ball's fraction of a pixel while he rides it
+    // The ball and the player, one way at a time (see relate):
+    //   free     on its own; from: 'ride' (flicked off a ride: frac, its fraction of a pixel there)
+    //            or 'trap' (lifted out of a trap: the lift takes it where it is)
+    //   feet     at his feet (the player's hasBall)
+    //   ridden   under his feet as he rides it (onBall); frac: its fraction of a pixel
+    //   trapped  being trapped (trapping); carry: carried along the way he goes (else pulled in to
+    //            him), dir: that way
+    //   head     riding on his head as he rises; dz, ahead: where it sits
+    //   juggled  knocked up on the run and carried along in the air
+    contact: { kind: 'free' },
+    // What the world remembers of the ball whatever the relation:
+    noCapture: 0, // ticks after a kick before the ball can be taken again
     lifted: false, // lifted by him: let drop before it can be trapped
-    liftTrapped: false, // lifted out of a trap: the lift takes the ball where it is
-    flickFromRide: false,
-    headRide: null, // { dz, ahead } while it rides on his head
-    carried: false, // knocked up on the run and carried along
-    juggleWait: 0,
-    trapCarry: false,
-    trapDir: 0,
+    juggleWait: 0, // ticks before he can knock it up on the run again
   };
+}
+
+// Sets the ball's relation to the player (createPractice lists them). The player's own view of it
+// (hasBall, onBall, trapping) is set alongside, through what player.js offers.
+function relate(s, kind, data = {}) {
+  s.contact = { kind, ...data };
 }
 
 const sign = (p) => (p.facing === 'left' ? -1 : 1);
@@ -120,6 +130,7 @@ function note(s, type, by = null) {
 // Every kick sets the ball's speed into the depth afresh (none unless it says so).
 function release(s) {
   loseBall(s.player);
+  relate(s, 'free');
   s.noCapture = NO_CAPTURE_TICKS;
   s.ball.vy = 0;
   s.ball.curve = null;
@@ -180,6 +191,7 @@ function chooseKick(s, button) {
   } else if (button === 'a') name = high ? 'groundVolley' : 'pass';
   else name = high ? 'volleyShot' : 'groundOverhead';
   startGroundKick(p, name);
+  if (s.contact.kind === 'trapped') relate(s, 'free');
 }
 
 // A kick from the ground meets the ball once it comes into the action's reach.
@@ -207,8 +219,7 @@ function strike(s, kind, t) {
 function applyEvent(s, e) {
   const { player: p, ball: b } = s;
   const event = e.type;
-  if (event === 'lift' && (p.hasBall || s.liftTrapped)) {
-    s.liftTrapped = false;
+  if (event === 'lift' && (p.hasBall || s.contact.from === 'trap')) {
     release(s);
     s.lifted = true;
     b.vx = 0;
@@ -220,11 +231,12 @@ function applyEvent(s, e) {
     b.vz = CHIP_VZ;
     // The original leaves the ball in place on the kick tick and moves it twice on the next.
     s.ballSteps = 0;
-  } else if (event === 'flickUp' && s.flickFromRide) {
-    s.flickFromRide = false;
+  } else if (event === 'flickUp' && s.contact.from === 'ride') {
+    const { frac } = s.contact;
+    relate(s, 'free');
     s.noCapture = NO_CAPTURE_TICKS;
     Object.assign(b, {
-      x: Math.floor(p.x) - FLICK_BEHIND * sign(p) + s.rideFrac, z: Math.floor(p.z) + FLICK_Z, vx: 0, vz: 0, hang: 1,
+      x: Math.floor(p.x) - FLICK_BEHIND * sign(p) + frac, z: Math.floor(p.z) + FLICK_Z, vx: 0, vz: 0, hang: 1,
     });
   } else if (event === 'flickUp' && p.hasBall) {
     release(s);
@@ -304,9 +316,9 @@ function applyEvent(s, e) {
 // (tools/simulate.py, the airhit-* plans). Returns whether it took the ball this tick.
 function headBall(s, playerZ) {
   const { player: p, ball: b } = s;
-  const ride = s.headRide;
+  const ride = s.contact.kind === 'head' ? s.contact : null;
   if (ride && (p.mode !== 'air' || p.action || p.vz <= 0)) {
-    s.headRide = null;
+    relate(s, 'free');
     b.vx = (HEAD_ROLL_VX + (HEAD_FAR - ride.ahead) * HEAD_ROLL_PER_PX) * sign(p);
     b.vz = HEAD_ROLL_VZ;
     return false;
@@ -321,7 +333,7 @@ function headBall(s, playerZ) {
   const ahead = (b.x - p.x) * sign(p);
   if (p.mode !== 'air' || p.action || p.vz <= 0 || b.vz >= 0 || !REACH.head.fits({ ahead, dz })
     || b.z + b.vz - p.z >= HEAD_Z) return false;
-  s.headRide = { dz, ahead };
+  relate(s, 'head', { dz, ahead });
   b.vx = (ahead > HEAD_FAR - 3 ? -HEAD_DRIFT : HEAD_DRIFT) * sign(p);
   b.x += b.vx;
   b.z = p.z + dz;
@@ -339,7 +351,7 @@ function juggle(s, { playerX, playerVx, ballX, ballZ, ballVz, wasRunning }) {
   if (s.juggleWait > 0) s.juggleWait -= 1;
   if (running && wasRunning && !s.juggleWait && ballVz < 0 && REACH.juggle.fits({ dx: ballX - playerX, z: ballZ })) {
     note(s, 'kick', 'juggle');
-    s.carried = true;
+    relate(s, 'juggled');
     s.juggleWait = JUGGLE_EVERY_TICKS;
     // He keeps the speed he had for this tick and the next two (a boost ends there).
     juggled(p, { vx: playerVx, x: playerX + playerVx, low: ballZ < TRAP_FOOT_Z });
@@ -350,10 +362,13 @@ function juggle(s, { playerX, playerVx, ballX, ballZ, ballVz, wasRunning }) {
     b.grounded = false;
     return true;
   }
-  if (!s.carried) return false;
+  if (s.contact.kind !== 'juggled') return false;
   // Off the run it flies on by itself (still counted as carried until it lands or is trapped).
-  if (b.grounded || Math.abs(b.x - p.x) > JUGGLE_CARRY_DX) s.carried = false;
-  if (!running || !s.carried) return false;
+  if (b.grounded || Math.abs(b.x - p.x) > JUGGLE_CARRY_DX) {
+    relate(s, 'free');
+    return false;
+  }
+  if (!running) return false;
   for (let i = 0; i < s.ballSteps; i++) if (tickBall(b)) note(s, 'bounce');
   s.ballSteps = 1;
   const vx = along();
@@ -409,17 +424,19 @@ function look(s) {
 // jump (it rolls on by itself, and nothing else happens to it this tick).
 function offTheRide(s, requests, before) {
   const { player: p, ball: b } = s;
-  if (p.onBall && !before.wasOnBall) s.rideFrac = b.x - Math.floor(b.x);
+  if (p.onBall && !before.wasOnBall) relate(s, 'ridden', { frac: b.x - Math.floor(b.x) });
   if (requests[0]?.type !== 'offBall') return false;
+  const { frac } = s.contact;
   s.noCapture = NO_CAPTURE_TICKS;
   if (p.action?.name === 'flick') {
-    s.flickFromRide = true;
+    relate(s, 'free', { from: 'ride', frac });
     Object.assign(b, { z: RIDE_RELEASE_Z, vx: 0, vz: 0, hang: 0 });
     return false;
   }
   // Jumping off: the ball still rolls under the feet this tick, then goes on by itself.
+  relate(s, 'free');
   rollBall(b, p.vx);
-  Object.assign(b, { x: Math.floor(p.x) + s.rideFrac, z: 0, vx: p.vx, vy: 0, vz: 0, hang: 0, grounded: true });
+  Object.assign(b, { x: Math.floor(p.x) + frac, z: 0, vx: p.vx, vy: 0, vz: 0, hang: 0, grounded: true });
   return true;
 }
 
@@ -430,11 +447,12 @@ function kickBall(s, requests) {
   if (requests.some((e) => e.type === 'takeTrapped')) {
     setTrapping(s.player, false);
     catchBall(s.player);
+    relate(s, 'feet');
   }
   const liftTrapped = requests.some((e) => e.type === 'liftTrapped');
   if (liftTrapped) {
     setTrapping(s.player, false);
-    s.liftTrapped = true;
+    relate(s, 'free', { from: 'trap' });
   }
   if (s.noCapture > 0) s.noCapture -= 1;
   if (liftTrapped) s.noCapture = 1;
@@ -449,7 +467,7 @@ function withPlayer(s, before) {
   if (p.onBall) {
     // Rolling under the rider's feet; the ball keeps its own sub-pixel position.
     rollBall(b, p.vx);
-    Object.assign(b, { x: Math.floor(p.x) + s.rideFrac, z: 0, vx: p.vx, vy: 0, vz: 0, hang: 0, grounded: true });
+    Object.assign(b, { x: Math.floor(p.x) + s.contact.frac, z: 0, vx: p.vx, vy: 0, vz: 0, hang: 0, grounded: true });
     return true;
   }
   if (p.hasBall) {
@@ -491,6 +509,7 @@ function takeOrTrap(s, before, input) {
     // On this tick it moves with the player, at his height.
     Object.assign(b, { x: ballX + p.vx, z: p.z, vx: p.vx, vz: 0 });
     catchBall(p);
+    relate(s, 'feet');
     return;
   }
   // On the ground the reach is judged from where the player was before he moved.
@@ -502,6 +521,7 @@ function takeOrTrap(s, before, input) {
       Object.assign(b, { x: b.x + p.vx - AIR_CAPTURE_LAG * sign(p), z: p.z, vx: p.vx, vz: p.vz });
     }
     takeBall(p);
+    relate(s, 'feet');
     if (p.mode !== 'air') {
       // Taken on the ground: at the feet at once, keeping its fractions of a pixel.
       const landing = p.mode === 'land' && p.land.ticks > 1;
@@ -523,25 +543,26 @@ function takeOrTrap(s, before, input) {
   const trapping = onFoot && !input.a && !(s.lifted && standing && !wasTrapping)
     && REACH.trap.fits({ dx: tdx, z: tz }, { trapping: wasTrapping }) && (wasTrapping || ballVz < 0 || tz < TRAP_FOOT_Z);
   setTrapping(p, trapping);
+  if (!trapping && s.contact.kind === 'trapped') relate(s, 'free');
   if (trapping && !wasTrapping) {
     // Low it is stopped with the foot, higher with the thigh. Taken before either moves this tick:
     // the player turns to the ball and brakes, the ball stops falling and rises a little, then is
     // carried along the way he was going (or towards him from standing).
     startTrap(p, { low: tz < TRAP_FOOT_Z, facing: tdx < 0 ? 'left' : 'right', x: playerX, vx: playerVx });
     // A ball coming in from the side is pulled in to him instead.
-    s.trapCarry = ballVx === 0 || s.carried;
-    s.carried = false;
-    s.trapDir = Math.sign(playerVx) || -Math.sign(tdx);
-    b.vx = s.trapCarry ? p.vx + TRAP_PULL * s.trapDir : 0;
+    const carry = ballVx === 0 || s.contact.kind === 'juggled';
+    relate(s, 'trapped', { carry, dir: Math.sign(playerVx) || -Math.sign(tdx) });
+    b.vx = carry ? p.vx + TRAP_PULL * s.contact.dir : 0;
     b.x = ballX + b.vx;
     b.z = ballZ + TRAP_PULL;
     b.vz = 0;
   } else if (trapping) {
     // The new speed already moves it this tick; he keeps facing the ball.
     // Carried along while he still moves or it is near; out past his reach it just drops.
-    const far = s.trapCarry && p.vx === 0 && Math.abs(dx) > TRAP_CARRY_DX;
-    const vx = far ? 0 : s.trapCarry ? p.vx + TRAP_PULL * s.trapDir : -TRAP_PULL * Math.sign(dx);
-    if (s.trapCarry) b.x += vx - b.vx;
+    const { carry, dir } = s.contact;
+    const far = carry && p.vx === 0 && Math.abs(dx) > TRAP_CARRY_DX;
+    const vx = far ? 0 : carry ? p.vx + TRAP_PULL * dir : -TRAP_PULL * Math.sign(dx);
+    if (carry) b.x += vx - b.vx;
     b.vx = vx;
     if (Math.abs(b.x - p.x) > 1) faceBall(p, b.x < p.x ? 'left' : 'right');
   }
