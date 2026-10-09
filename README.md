@@ -65,6 +65,7 @@ js/touch.js            touch controls and full screen
 js/scale.js            snaps the scale to whole screen pixels
 fonts/                 local fonts (SIL OFL 1.1)
 docs/architecture.md   how the game logic is built, where it is going and the steps there
+docs/fidelity.md       where the game is known to differ from the original, with plans to see it
 docs/reference/        reference images and the Mesen movie the tools start from
 tools/                 the tools that capture data from the original and check the game against it
 ```
@@ -84,6 +85,7 @@ neither the ROM nor the recordings:
 | `tests/invariants.test.mjs`   | 300 seeded random plans against rules that always hold (on the screen, one relation with the ball at a time, ...) |
 | `tests/interaction.test.mjs`  | what a press does with the ball, and its sounds                             |
 | `tests/ball.test.mjs`         | the ball's physics against the original's numbers                           |
+| `tests/reach.test.mjs`        | each reach rule (`js/game/reach.js`) against the hits and misses measured on the original, and its boxes against what it decides |
 | `tests/preload.test.mjs`      | the `modulepreload` list in `index.html`                                    |
 
 A change to the game's behaviour shows in the golden traces; when it is meant, write them anew with

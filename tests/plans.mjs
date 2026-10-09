@@ -28,5 +28,7 @@ export const PLANS = {
   'mount-ride-flick': [700, [...tap(10, 'A'), [300, 390, 'R'], ...tap(330, 'AB'), ...doubleTap(420, 'R'), [432, 500, 'R'], ...tap(519, 'RAB', 6)]],
   'keep-up-behind': [260, [...tap(31, 'AB'), [45, 63, 'R'], ...tap(142, 'A')]],
   'flick': [200, [[20, 60, 'R'], ...tap(40, 'RAB')]],
+  // A ball off the wall trapped at the thigh, then A+B with the way he faces: taken, flicked.
+  'trap-ab': [200, [[20, 24, 'L'], [28, 32, 'L'], [32, 81, 'L'], ...tap(32, 'AB'), [37, 40, 'BL'], [84, 88, 'L'], [92, 96, 'L'], [96, 133, 'L'], [133, 137, 'R'], [141, 145, 'R'], [145, 199, 'R'], ...tap(164, 'AB'), ...tap(172, 'A')]],
   'run-juggle': [300, [...tap(31, 'AB'), [40, 50, 'L'], ...doubleTap(100, 'R'), [112, 180, 'R']]],
 };

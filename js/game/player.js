@@ -1,3 +1,6 @@
+import { POSE } from './animation.js';
+import { REACH } from './reach.js';
+
 // Speeds are px per logic tick (3 frames), measured from a RAM dump of the original.
 const WALK_SPEED = 2.3125;
 const WALK_DECEL = 0.75;
@@ -43,41 +46,13 @@ const CRAWL_SPEED = 4;
 // Riding the ball: dropping onto a ball lying still lands on it (crouched at MOUNT_Z), then the
 // player stands on top at RIDE_Z and the ball rolls under him; runs are a little slower there.
 // Measured with tools/simulate.py (the mount-* plans): 14.8 px away landed on it, 15.6 px missed.
-const MOUNT_DX = 15;
 const MOUNT_Z = 9;
 const RIDE_Z = 13;
 const RIDE_RUN_SPEED = 3.25;
 
-export const POSE = {
-  stand: 0, walk1: 1, walk2: 2, run1: 3, sprint1: 4, sprint2: 5, skid: 6, air: 7, jumpKick: 8, land: 9,
-  windUp: 10, overhead1: 11, overhead2: 12, overheadOwnBall: 13, overhead: 14,
-  flip1: 15, flip2: 16, flip3: 17, flip4: 18, lift: 19, volley: 20, pass: 21, dive: 22, slide: 23,
-  crawl: 24, feint: 25, dash: 26,
-};
-
-// Poses the original draws mirrored against the way the player faces: the bicycle kick's turn
-// and the slide after a dive.
-const MIRRORED_POSES = new Set([POSE.flip2, POSE.flip3, POSE.flip4, POSE.slide]);
-
-export function drawnFacing(p, pose) {
-  if (!MIRRORED_POSES.has(pose)) return p.facing;
-  return p.facing === 'left' ? 'right' : 'left';
-}
-
-export const ANIMATIONS = {
-  stand: { poses: [POSE.stand], frames: 1 },
-  walk: { poses: [POSE.walk1, POSE.stand, POSE.walk2, POSE.stand], frames: 6 },
-  // Treading on the spot (Up or Down) after an action or a run: the walk, from half a step earlier.
-  tread: { poses: [POSE.stand, POSE.walk1, POSE.walk1, POSE.stand, POSE.stand, POSE.walk2, POSE.walk2, POSE.stand], frames: 3 },
-  // Running on the ball: the walking steps, twice as fast.
-  ride: { poses: [POSE.walk1, POSE.stand, POSE.walk2, POSE.stand], frames: 3 },
-  run: { poses: [POSE.run1, POSE.stand], frames: 6 },
-  skid: { poses: [POSE.skid], frames: 1 },
-};
-
 // Scripted actions: [pose, ticks] steps, and events emitted at a tick index (0 = the first tick).
 // An action is drawn from the end of its first tick, so the first step lasts one tick more.
-// A `strike` action emits 'strike:<kind>:<tick>' on every tick after the first until the ball is hit.
+// A `strike` action emits { type: 'strike', kind, t } on every tick after the first until the ball is hit.
 // An action with `hits` emits its event on every tick of that window until the ball is hit.
 export const ACTIONS = {
   // A press on its last ticks is kept for when it is over (B there: a volley at the ball coming down).
@@ -171,9 +146,9 @@ export function createPlayer(x) {
       sprinting: false,
       queued: 0, // a double tap while landing: the run starts once up
     },
-    skid: { pause: false, hold: 0, after: false },
+    skid: { after: false },
     air: { actionUsed: false },
-    land: { ticks: 0, touchdown: false },
+    land: { ticks: 0 },
     dive: { landed: false, fromDive: false, crawlTicks: 0, crawlDir: 0, pushTicks: 0 },
     // With the ball (set by js/game/practice.js, which moves it).
     hasBall: false,
@@ -182,12 +157,18 @@ export function createPlayer(x) {
     onBall: false, // standing on it
     rising: false, // getting up onto it
     trapping: false,
-    trapCaught: false,
-    trapLow: false, // with the foot rather than the thigh
     settleTicks: 0,
     juggleTicks: 0,
-    juggleLow: false,
-    anim: { name: 'stand', facing: 'right', frame: 0 },
+    // What the mechanics leave for the pose alone (js/game/animation.js reads it, nothing else does).
+    look: {
+      touchdown: false, // the landing tick still shows the air pose
+      skidPause: false, // the first tick of a skid holds the running pose
+      skidHold: 0, // ticks the skid pose stays after the skid
+      trapCaught: false, // trapped this tick: the trap pose once more
+      trapLow: false, // trapping with the foot rather than the thigh
+      juggleLow: false, // juggling it off the foot rather than the thigh
+    },
+    anim: { name: 'stand', facing: 'right', frame: 0 }, // the animation playing (animation.js)
   };
 }
 
@@ -225,12 +206,12 @@ export function startAction(p, name) {
 function runAction(p, events) {
   const a = p.action;
   if (!a) return;
-  if (a.events[a.t]) events.push(a.events[a.t]);
-  if (a.strike && a.t > 0 && !a.struck) events.push(`strike:${a.strike}:${a.t}`);
+  if (a.events[a.t]) events.push({ type: a.events[a.t] });
+  if (a.strike && a.t > 0 && !a.struck) events.push({ type: 'strike', kind: a.strike, t: a.t });
   const h = a.hits;
   if (h && !a.struck && a.t >= h.from && a.t <= h.to && !h.skip?.includes(a.t)) {
     a.hitTick = a.t;
-    events.push(h.event);
+    events.push({ type: h.event });
   }
   a.t += 1;
   if (a.t >= a.steps.reduce((n, [, ticks]) => n + ticks, 0)) {
@@ -239,15 +220,6 @@ function runAction(p, events) {
     if (p.mode !== 'air' && p.input.prevDir !== 0) p.facing = p.input.prevDir < 0 ? 'left' : 'right';
     p.action = null;
   }
-}
-
-function actionPose(a) {
-  let t = a.t;
-  for (const [pose, ticks] of a.steps) {
-    if (t < ticks) return pose;
-    t -= ticks;
-  }
-  return a.steps[a.steps.length - 1][0];
 }
 
 export function groundAction(p, events) {
@@ -311,7 +283,7 @@ function airTick(p, dir, aEdge, bEdge, events) {
 
   // Coming down onto a ball lying below, from its height down: he lands on it (it rolls under him).
   const top = p.ballBelow;
-  if (top !== null && !p.action && p.vz < 0 && p.z > 0 && p.z <= RIDE_Z && Math.abs(top - p.x) <= MOUNT_DX) {
+  if (top !== null && !p.action && p.vz < 0 && REACH.mount.fits({ dx: top - p.x, dz: -p.z })) {
     mount(p);
     return;
   }
@@ -325,7 +297,7 @@ function airTick(p, dir, aEdge, bEdge, events) {
     p.vz = 0;
     p.mode = 'land';
     p.land.ticks = LAND_TICKS + 1;
-    p.land.touchdown = true;
+    p.look.touchdown = true;
     if (p.action?.turnBack) p.facing = p.action.turnBack;
     p.action = null;
   }
@@ -433,17 +405,17 @@ function groundTick(p, dir, pressed, verticalKey) {
   if (skidStart) {
     // The original holds still for the first tick of a skid, still in the running pose.
     p.mode = 'skid';
-    p.skid.pause = true;
+    p.look.skidPause = true;
     p.vx = RUN_SPEED * p.run.dir;
     return;
   }
 
   if (p.mode === 'skid') {
-    p.skid.pause = false;
+    p.look.skidPause = false;
     p.vx = approachZero(p.vx, RUN_DECEL);
     if (p.vx === 0) {
       p.mode = 'walk';
-      p.skid.hold = 1;
+      p.look.skidHold = 1;
       p.skid.after = true;
     }
   } else if (p.mode === 'walk' && p.skid.after) {
@@ -466,7 +438,7 @@ function groundTick(p, dir, pressed, verticalKey) {
   moveX(p);
 }
 
-// Advances one logic tick; returns the ball events of this tick ('lift', 'hit', ...).
+// Advances one logic tick; returns what it asks of the ball this tick ({ type: 'lift' }, ...).
 export function tickPlayer(p, input) {
   const dir = input.left === input.right ? 0 : input.left ? -1 : 1;
   const pressed = dir !== 0 && dir !== p.input.prevDir;
@@ -477,7 +449,7 @@ export function tickPlayer(p, input) {
   p.input.vertical = vertical;
   p.input.verticalTap = false;
   p.input.stepped = false;
-  p.trapCaught = false;
+  p.look.trapCaught = false;
   if (p.juggleTicks > 0) p.juggleTicks -= 1;
   const wasSprinting = p.run.sprinting;
   p.run.sprinting = false;
@@ -505,7 +477,7 @@ export function tickPlayer(p, input) {
   p.input.prevA = input.a;
   p.input.prevB = input.b;
   p.tick += 1;
-  if (p.skid.hold > 0) p.skid.hold -= 1;
+  if (p.look.skidHold > 0) p.look.skidHold -= 1;
   const events = [];
 
   if (p.mode === 'air') {
@@ -520,7 +492,7 @@ export function tickPlayer(p, input) {
   }
 
   if (p.mode === 'land') {
-    p.land.touchdown = false;
+    p.look.touchdown = false;
     // B while getting up from a dive dives again, a tick after the A+B window.
     if (p.dive.fromDive && p.press.button === 'b' && since(p, p.input.abTick) > AB_WINDOW_TICKS + 1) {
       p.press.button = null;
@@ -578,34 +550,39 @@ export function tickPlayer(p, input) {
     p.air.actionUsed = true;
     startAction(p, 'flick');
     groundAction(p, events);
-    return ['offBall', ...events];
+    return [{ type: 'offBall' }, ...events];
   }
   if (abPressed && p.onBall) {
     // Without one: jump off and let the ball roll on.
     p.onBall = false;
     jump(p);
     airTick(p, 0, false, false, events);
-    return ['offBall', ...events];
+    return [{ type: 'offBall' }, ...events];
   }
+  // A ball he is trapping counts as his for A+B (the original, tools/simulate.py: trap-ab and the
+  // random plans): lifted from where it is, or taken to his feet for anything else.
+  const fromTrap = abPressed && p.trapping;
+  const trapped = fromTrap ? [{ type: 'takeTrapped' }] : [];
+  const withBall = p.hasBall || fromTrap;
   // Standing with the ball (or coming to a stop) A+B lifts it; with a direction, Up or Down held
   // the player jumps with it.
-  if (abPressed && p.hasBall && p.mode === 'walk' && dir === 0 && !p.input.vertical) {
+  if (abPressed && withBall && p.mode === 'walk' && dir === 0 && !p.input.vertical) {
     startAction(p, 'lift');
     groundAction(p, events);
-    return events;
+    return [...(fromTrap ? [{ type: 'liftTrapped' }] : []), ...events];
   }
   // With the ball and the way he faces held (walking or running), A+B skids and flicks it up.
-  if (abPressed && p.hasBall && dir !== 0 && dir === facingSign(p) && !p.input.vertical) {
+  if (abPressed && withBall && dir !== 0 && dir === facingSign(p) && !p.input.vertical) {
     p.mode = 'walk';
     startAction(p, 'flick');
     groundAction(p, events);
-    return events;
+    return [...trapped, ...events];
   }
   if (abPressed) {
     if (p.mode === 'run' && wasSprinting && p.run.dir < 0 && (dir < 0 || lastDir < 0)) p.vx = BOOST_JUMP_LEFT_SPEED;
     jump(p);
     airTick(p, dir, false, false, events);
-    return events;
+    return [...trapped, ...events];
   }
 
   if (p.trapping && p.mode === 'walk') {
@@ -688,7 +665,7 @@ function diveTick(p, dir, events) {
       p.vz = 0;
       p.dive.landed = true;
     }
-    events.push('dive');
+    events.push({ type: 'dive' });
   } else if (p.dive.pushTicks > 0) {
     p.dive.pushTicks -= 1;
     p.vx = CRAWL_SPEED * p.dive.crawlDir;
@@ -710,11 +687,11 @@ function diveTick(p, dir, events) {
 const kickReady = (p) => p.press.button && (p.mode === 'walk' || p.mode === 'run')
   && (since(p, p.input.abTick) > AB_WINDOW_TICKS || p.press.released || (p.press.button === 'ab' && p.press.queued));
 
-// The A+B window has passed with one button: the caller picks the action ('kickA' / 'kickB').
+// The A+B window has passed with one button: the caller picks the action ({ type: 'groundKick', button }).
 // The kick faces the direction held with the button, even if a skid came in between; the
 // direction and Up or Down held with it stay in kickDir and kickVertical for the caller.
 function kick(p) {
-  const event = p.press.button === 'a' ? 'kickA' : 'kickB';
+  const event = { type: 'groundKick', button: p.press.button === 'a' ? 'a' : 'b' };
   if (p.press.dir !== 0) p.facing = p.press.dir < 0 ? 'left' : 'right';
   p.kick.dir = p.press.dir;
   p.kick.vertical = p.press.vertical;
@@ -723,37 +700,87 @@ function kick(p) {
   return event;
 }
 
-function currentAnimation(p) {
-  if (p.action) return `action:${actionPose(p.action)}`;
-  if (p.mode === 'air') return `action:${POSE.air}`;
-  if (p.mode === 'land') return `action:${p.land.touchdown ? POSE.air : POSE.land}`;
-  if (p.mode === 'dive' && p.dive.crawlTicks > 0) return `action:${POSE.crawl}`;
-  if (p.mode === 'dive') return `action:${p.vz >= 0 && !p.dive.landed ? POSE.dive : POSE.slide}`;
-  if (p.juggleTicks > 0) return `action:${p.juggleLow ? POSE.lift : POSE.windUp}`;
-  if (p.trapping || p.trapCaught) return `action:${p.trapLow ? POSE.lift : POSE.windUp}`;
-  if (p.mode === 'skid') return p.skid.pause ? p.anim.name : 'skid';
-  if (p.skid.hold > 0) return 'skid';
-  // Sprint poses alternate each tick of a boost, the last tick repeating the second one.
-  if (p.mode === 'run' && p.run.sprinting) return `action:${p.run.boost > 0 && p.run.boost % 2 === 0 ? POSE.sprint1 : POSE.sprint2}`;
-  if (p.mode === 'run') return p.onBall ? 'ride' : 'run';
-  if (p.input.vertical) return p.anim.name === 'walk' || p.anim.name === 'stand' ? 'walk' : 'tread';
-  if ((p.input.prevDir === 0 && !p.input.stepped) || p.vx === 0) return 'stand';
-  // Walking on straight out of a run (stopped by a wall) starts half a step later, like treading.
-  return p.anim.name === 'run' || p.anim.name === 'tread' ? 'tread' : 'walk';
+// --- What the world tells the player ---
+// The practice (js/game/practice.js) decides what the ball does to him; these carry it out, so the
+// player's state is changed in this file only.
+
+// A trap brakes the player to a stop this much per tick.
+const TRAP_BRAKE = 1;
+// Knocking the ball up on the run shows its pose this long.
+const JUGGLE_POSE_TICKS = 3;
+
+// What he sees of the ball before anyone moves this tick: the x of a ball lying below to land on
+// (or null), and whether one is high enough to volley.
+export function seeBall(p, { below, high }) {
+  p.ballBelow = below;
+  p.ballHigh = high;
 }
 
-export function framePlayer(p) {
-  const animation = currentAnimation(p);
-  if (animation !== p.anim.name || (p.facing !== p.anim.facing && animation !== 'walk')) {
-    p.anim.name = animation;
-    p.anim.facing = p.facing;
-    p.anim.frame = 0;
+// Caught in the air.
+export function catchBall(p) {
+  p.hasBall = true;
+}
+
+// Taken at the feet or in a jump; out of a trap he stands a tick more (and may turn).
+export function takeBall(p) {
+  p.hasBall = true;
+  if (p.trapping) {
+    p.settleTicks = 1;
+    p.look.trapCaught = true;
   }
-  if (animation.startsWith('action:')) return Number(animation.slice(7));
-  const { poses, frames } = ANIMATIONS[animation];
-  const pose = poses[Math.floor(p.anim.frame / frames) % poses.length];
-  p.anim.frame += 1;
-  return pose;
+  p.trapping = false;
+}
+
+// Kicked or lifted off his feet.
+export function loseBall(p) {
+  p.hasBall = false;
+}
+
+// The action under way met the ball: it goes through without stopping it again.
+export function struckBall(p) {
+  if (p.action) p.action.struck = true;
+}
+
+// B on the ground kicks towards the goal on the right, whichever way he faced.
+export function faceGoal(p) {
+  p.facing = 'right';
+}
+
+// A or B alone on the ground, the kick the practice chose for the ball he has or sees.
+export function startGroundKick(p, name) {
+  startAction(p, name);
+  p.trapping = false;
+  groundAction(p, []);
+}
+
+// Knocked the ball up on the run: he keeps the speed he had (a boost ends there), and taps before
+// it do not make a double tap with ones after.
+export function juggled(p, { vx, x, low }) {
+  p.vx = vx;
+  p.x = x;
+  p.run.boost = 0;
+  p.run.sprinting = false;
+  p.juggleTicks = JUGGLE_POSE_TICKS;
+  p.input.tapTick = null;
+  p.look.juggleLow = low;
+}
+
+export function setTrapping(p, on) {
+  p.trapping = on;
+}
+
+// A trap starting, judged before either moved: he turns to the ball and brakes from the speed he
+// had (keeping a push off a wall).
+export function startTrap(p, { low, facing, x, vx }) {
+  p.look.trapLow = low;
+  p.facing = facing;
+  const push = p.x - x - p.vx;
+  p.vx = approachZero(vx, TRAP_BRAKE);
+  p.x = x + p.vx + push;
+}
+
+export function faceBall(p, facing) {
+  p.facing = facing;
 }
 
 // Running, not boosting (Up or Down held slows it down).

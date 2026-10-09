@@ -7,7 +7,7 @@ import { deflateSync } from 'node:zlib';
 import { PRESS_START } from '../js/art/press-start.js';
 import { START } from '../js/art/sprites.js';
 import { TITLE_LOGO } from '../js/art/title-logo.js';
-import { drawnFacing, framePlayer } from '../js/game/player.js';
+import { drawnFacing, framePlayer } from '../js/game/animation.js';
 import { createPractice, tickPractice } from '../js/game/practice.js';
 import { pixelTextRows } from '../js/pixel-font.js';
 
